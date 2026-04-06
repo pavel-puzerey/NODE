@@ -3,7 +3,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Edit, Trash2, Save, X, Crosshair } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Crosshair, Camera } from 'lucide-react';
 import { Rifle } from '../types';
 import { generateId } from '../utils/id';
 
@@ -80,6 +80,7 @@ interface RifleManagerProps {
 
 export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [imageMap, setImageMap] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Rifle>>({});
   const [newRifle, setNewRifle] = useState<Partial<Rifle>>({
@@ -144,16 +145,23 @@ export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
     }
   };
 
+  const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setImageMap(prev => ({ ...prev, [id]: ev.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Crosshair className="w-5 h-5 text-amber-500" />
-          Rifle Inventory
-        </h2>
+        <h2 className="text-2xl font-bold text-white">Rifle Inventory</h2>
         <Button 
           onClick={() => setIsAdding(!isAdding)} 
-          className="bg-slate-700 hover:bg-slate-600 text-white"
+          className="bg-amber-600 hover:bg-amber-500 text-white"
         >
           {isAdding ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {isAdding ? 'Cancel' : 'Add Rifle'}
@@ -178,7 +186,7 @@ export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {rifles.map((rifle) => (
-          <Card key={rifle.id} className="bg-slate-800 border-slate-700 overflow-hidden">
+          <Card key={rifle.id} className="bg-slate-900 border-slate-800 card-tactical overflow-hidden">
             {editingId === rifle.id ? (
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
@@ -223,6 +231,28 @@ export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
                     <div className="text-slate-500">Trigger:</div>
                     <div className="text-slate-200 text-right truncate">{rifle.trigger || '-'}</div>
                   </div>
+
+                  {/* Rifle Image */}
+                  {imageMap[rifle.id] ? (
+                    <div className="mt-3 relative group">
+                      <img
+                        src={imageMap[rifle.id]}
+                        alt={rifle.caliber}
+                        className="w-full h-36 object-cover rounded-lg border border-slate-700"
+                      />
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-lg">
+                        <Camera className="w-6 h-6 text-white mr-2" />
+                        <span className="text-white text-xs">Change photo</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(rifle.id, e)} />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="mt-3 flex items-center justify-center gap-2 w-full py-2 border border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-amber-600 transition-colors text-slate-500 hover:text-amber-500 text-xs">
+                      <Camera className="w-4 h-4" />
+                      Add photo
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(rifle.id, e)} />
+                    </label>
+                  )}
                 </CardContent>
               </>
             )}

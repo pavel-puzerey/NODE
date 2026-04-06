@@ -54,7 +54,6 @@ export function MatchCalendar({ matches, setMatches }: MatchCalendarProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Match Calendar</h2>
-          <p className="text-slate-400">Track upcoming competitions and events</p>
         </div>
         {!isAdding && (
           <Button onClick={() => setIsAdding(true)} className="bg-amber-600 hover:bg-amber-700">
@@ -123,7 +122,7 @@ export function MatchCalendar({ matches, setMatches }: MatchCalendarProps) {
             </div>
             <div className="flex gap-2">
               <Button onClick={handleSubmit} className="bg-amber-600 hover:bg-amber-700">Save Match</Button>
-              <Button onClick={() => setIsAdding(false)} variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">Cancel</Button>
+              <Button onClick={() => setIsAdding(false)} variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white">Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -134,7 +133,6 @@ export function MatchCalendar({ matches, setMatches }: MatchCalendarProps) {
           <Card className="bg-slate-900 border-slate-800 card-tactical">
             <CardContent className="py-12 text-center">
               <CalendarIcon className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400">No matches scheduled</p>
             </CardContent>
           </Card>
         ) : (

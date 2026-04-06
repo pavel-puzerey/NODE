@@ -58,7 +58,7 @@ export interface RangeSession {
 export interface GearItem {
   id: string;
   userId: string;
-  gearType: 'Bullet' | 'Case' | 'Powder' | 'Primer' | 'Press' | 'Sizing Die' | 'Seating Die' | 'Scale' | 'Trickler' | 'Primer Tool' | 'Case Trimmer' | 'Annealer' | 'Case Cleaning System' | 'Headspace Comparator' | 'Bullet Comparator' | 'Bullet Puller' | 'Powder Funnel';
+  gearType: 'Bullet' | 'Case' | 'Powder' | 'Primer' | 'Reloading Press' | 'Sizing Die' | 'Seating Die' | 'Scale' | 'Trickler' | 'Annealer' | 'Primer Tool' | 'Case Cleaning System' | 'Case Trimmer' | 'Headspace Comparator' | 'Bullet Comparator' | 'Bullet Puller';
   brand: string;
   model: string;
   weight?: number;
@@ -73,7 +73,7 @@ export interface GearItem {
 export interface Accessory {
   id: string;
   userId: string;
-  accessoryType: 'Bipod' | 'Suppressor' | 'Muzzle Brake' | 'Shooting Bag' | 'Chronograph' | 'Scope Mount' | 'Magazines' | 'Rifle Case' | 'Tripod' | 'Shooting Mat' | 'Timer' | 'Level' | 'Other';
+  accessoryType: 'Bipod' | 'Suppressor' | 'Muzzle Brake' | 'Shooting Bag' | 'Sling' | 'Chronograph' | 'Tripod' | 'Rifle Case' | 'Magazines' | 'Scope Mount' | 'Shooting Mat' | 'Timer' | 'Level' | 'Other';
   brand: string;
   model: string;
   weight?: number;
@@ -143,17 +143,3 @@ export interface Point {
   y: number;
 }
 
-export interface TargetAnalysis {
-  id: string;
-  imageUrl: string;
-  calibrationPoints: Point[];
-  calibrationDistance: number;
-  impacts: Point[];
-  calculatedStats: {
-    groupSizeIn: number;
-    extremeSpreadIn: number;
-    meanRadiusIn: number;
-    center: Point;
-  };
-  createdAt: string;
-}

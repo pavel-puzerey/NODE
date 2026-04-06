@@ -108,7 +108,7 @@ export function LoadPerformanceChart({ sessions, loads }: LoadPerformanceChartPr
                     return [value, name];
                   }}
                 />
-                <Scatter name="Loads" data={data} fill="#10b981" />
+                <Scatter name="Loads" data={data} fill="#d97706" />
               </ScatterChart>
             </ResponsiveContainer>
           ) : (

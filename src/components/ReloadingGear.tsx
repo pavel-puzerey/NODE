@@ -81,14 +81,31 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
     setEditingId(null);
   };
 
-  const gearTypes: GearItem['gearType'][] = ['Bullet', 'Case', 'Powder', 'Primer'];
+  const gearTypes: GearItem['gearType'][] = [
+    'Bullet',
+    'Case',
+    'Powder',
+    'Primer',
+    'Reloading Press',
+    'Sizing Die',
+    'Seating Die',
+    'Scale',
+    'Trickler',
+    'Annealer',
+    'Primer Tool',
+    'Case Cleaning System',
+    'Case Trimmer',
+    'Headspace Comparator',
+    'Bullet Comparator',
+    'Bullet Puller',
+    'Expander Mandrel Die',
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Reloading Gear</h2>
-          <p className="text-slate-400">Manage your bullets, brass, powder, and primers</p>
         </div>
         <Button 
           onClick={() => setIsAdding(!isAdding)} 
@@ -140,9 +157,21 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                   placeholder="e.g., ELD-M"
                 />
               </div>
-              {(formData.gearType === 'Bullet' || formData.gearType === 'Powder') && (
+              {formData.gearType === 'Bullet' && (
                 <div className="space-y-2">
                   <Label className="text-slate-300">Weight (gr)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.1"
+                    value={formData.weight || ''} 
+                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
+                    className="bg-slate-900 border-slate-700 text-white"
+                  />
+                </div>
+              )}
+              {formData.gearType === 'Powder' && (
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Weight (lbs)</Label>
                   <Input 
                     type="number" 
                     step="0.1"
@@ -176,7 +205,9 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-700">
                       <SelectItem value="Small Rifle" className="text-white">Small Rifle</SelectItem>
+                      <SelectItem value="Small Rifle Magnum" className="text-white">Small Rifle Magnum</SelectItem>
                       <SelectItem value="Large Rifle" className="text-white">Large Rifle</SelectItem>
+                      <SelectItem value="Large Rifle Magnum" className="text-white">Large Rifle Magnum</SelectItem>
                       <SelectItem value="Small Pistol" className="text-white">Small Pistol</SelectItem>
                       <SelectItem value="Large Pistol" className="text-white">Large Pistol</SelectItem>
                     </SelectContent>
@@ -206,7 +237,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                 <Save className="mr-2 h-4 w-4" />
                 {editingId ? 'Update' : 'Save'}
               </Button>
-              <Button onClick={resetForm} variant="outline" className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
+              <Button onClick={resetForm} variant="outline" className="border border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white">
                 Cancel
               </Button>
             </div>
@@ -216,13 +247,12 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {gear.map((item) => (
-          <Card key={item.id} className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-colors">
+          <Card key={item.id} className="bg-slate-900 border-slate-800 card-tactical">
             <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
-                  <CardDescription className="text-slate-400">{item.model}</CardDescription>
-                </div>
+              <div className="flex items-start justify-between mb-2">
+                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded">
+                  {item.gearType}
+                </span>
                 <div className="flex gap-1">
                   <Button 
                     variant="ghost" 
@@ -242,20 +272,17 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                   </Button>
                 </div>
               </div>
+              <div>
+                <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
+                <CardDescription className="text-slate-400">{item.model}</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Prominent Gear Type Label */}
-              <div className="flex justify-center">
-                <span className="inline-block bg-slate-900 text-amber-400 text-xl font-bold px-6 py-2 rounded-lg border-2 border-amber-900/50 shadow-sm">
-                  {item.gearType}
-                </span>
-              </div>
-
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2">
                 {item.weight && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Weight</span>
-                    <span className="text-white font-medium">{item.weight} gr</span>
+                    <span className="text-white font-medium">{item.weight} {item.gearType === 'Powder' ? 'lbs' : 'gr'}</span>
                   </div>
                 )}
                 {item.diameter && (
@@ -290,7 +317,6 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
       {gear.length === 0 && !isAdding && (
         <div className="text-center py-12 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
           <Package className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-400">No reloading gear added yet</p>
           <p className="text-slate-500 text-sm">Click "Add Gear" to get started</p>
         </div>
       )}

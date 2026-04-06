@@ -86,8 +86,7 @@ export function Dashboard({ sessions, rifles, loads }: DashboardProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="stat-readout">Performance Dashboard</h2>
-        <p className="text-slate-400">Track your shooting progress and load consistency</p>
+        <h2 className="text-2xl font-bold text-white">Performance Dashboard</h2>
       </div>
 
       {/* Summary Cards */}
@@ -168,9 +167,9 @@ export function Dashboard({ sessions, rifles, loads }: DashboardProps) {
                     <Line 
                       type="monotone" 
                       dataKey="size" 
-                      stroke="#10b981" 
+                      stroke="#d97706" 
                       strokeWidth={2}
-                      dot={{ fill: '#10b981', r: 4 }}
+                      dot={{ fill: '#d97706', r: 4 }}
                       activeDot={{ r: 6 }}
                     />
                   </LineChart>
@@ -218,7 +217,7 @@ export function Dashboard({ sessions, rifles, loads }: DashboardProps) {
                     />
                     <Bar 
                       dataKey="sd" 
-                      fill="#10b981" 
+                      fill="#d97706" 
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>

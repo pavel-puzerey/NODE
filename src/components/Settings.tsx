@@ -3,8 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Download, Upload, AlertTriangle, User, Palette } from 'lucide-react';
+import { Download, Upload, AlertTriangle } from 'lucide-react';
 import { UserSettings, BackupData } from '../types';
 
 interface SettingsProps {
@@ -30,7 +29,6 @@ export function Settings({
   setAccessories,
   setGlass
 }: SettingsProps) {
-  const [importFile, setImportFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -98,96 +96,12 @@ export function Settings({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Settings</h2>
-        <p className="text-slate-400">Manage your profile and application data</p>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Profile Settings */}
-        <Card className="bg-slate-900 border-slate-800 card-tactical">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-amber-400" />
-              <CardTitle className="text-white">Profile</CardTitle>
-            </div>
-            <CardDescription className="text-slate-400">
-              Update your personal information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Display Name</Label>
-              <Input
-                type="text"
-                value={settings.userName}
-                onChange={(e) => setSettings({ ...settings, userName: e.target.value })}
-                className="bg-slate-900 border-slate-700 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-slate-300">Email</Label>
-              <Input
-                type="email"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                className="bg-slate-900 border-slate-700 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-slate-300">Shooting Class</Label>
-              <Input
-                type="text"
-                value={settings.shootingClass}
-                onChange={(e) => setSettings({ ...settings, shootingClass: e.target.value })}
-                placeholder="e.g. PRS Production, NRL Hunter"
-                className="bg-slate-900 border-slate-700 text-white"
-              />
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Appearance Settings */}
-        <Card className="bg-slate-900 border-slate-800 card-tactical">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Palette className="w-5 h-5 text-blue-500" />
-              <CardTitle className="text-white">Appearance</CardTitle>
-            </div>
-            <CardDescription className="text-slate-400">
-              Customize the app theme
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-slate-300">Theme</Label>
-              <Select 
-                value={settings.theme} 
-                onValueChange={(value) => setSettings({ ...settings, theme: value })}
-              >
-                <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-700">
-                  <SelectItem value="slate" className="text-white">Slate (Default)</SelectItem>
-                  <SelectItem value="gray" className="text-white">Gray</SelectItem>
-                  <SelectItem value="zinc" className="text-white">Zinc</SelectItem>
-                  <SelectItem value="neutral" className="text-white">Neutral</SelectItem>
-                  <SelectItem value="stone" className="text-white">Stone</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Data Management */}
-      <Card className="bg-slate-800 border-slate-700 border-l-4 border-l-amber-500">
+      <Card className="bg-slate-900 border-slate-800 card-tactical">
         <CardHeader>
           <CardTitle className="text-white">Data Management</CardTitle>
-          <CardDescription className="text-slate-400">
-            Export your data for backup or import from a previous backup
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-slate-700">
@@ -226,7 +140,7 @@ export function Settings({
                 id="import-file"
               />
               <Label htmlFor="import-file" className="cursor-pointer">
-                <Button variant="outline" className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 hover:text-white" asChild>
+                <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white" asChild>
                   <span>
                     <Upload className="w-4 h-4 mr-2" />
                     Import Backup

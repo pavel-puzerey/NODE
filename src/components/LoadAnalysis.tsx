@@ -156,8 +156,7 @@ export function LoadAnalysis({ sessions, rifles, loads }: LoadAnalysisProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="stat-readout">Load Analysis</h2>
-          <p className="text-slate-400">Find accuracy nodes and velocity consistency</p>
+          <h2 className="text-2xl font-bold text-white">Load Analysis</h2>
         </div>
       </div>
 
@@ -271,9 +270,9 @@ export function LoadAnalysis({ sessions, rifles, loads }: LoadAnalysisProps) {
                       <Line 
                         type="monotone" 
                         dataKey="avgGroupSize" 
-                        stroke="#10b981" 
+                        stroke="#d97706" 
                         strokeWidth={2}
-                        dot={{ fill: '#10b981', r: 5 }}
+                        dot={{ fill: '#d97706', r: 5 }}
                         activeDot={{ r: 7 }}
                       />
                     </LineChart>
@@ -394,7 +393,6 @@ export function LoadAnalysis({ sessions, rifles, loads }: LoadAnalysisProps) {
         <Card className="bg-slate-900 border-slate-800 card-tactical">
           <CardContent className="py-12 text-center">
             <BarChart3 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">No session data available for this rifle yet.</p>
             <p className="text-sm text-slate-500 mt-2">Log some range sessions to see load analysis.</p>
           </CardContent>
         </Card>
@@ -402,7 +400,6 @@ export function LoadAnalysis({ sessions, rifles, loads }: LoadAnalysisProps) {
         <Card className="bg-slate-900 border-slate-800 card-tactical">
           <CardContent className="py-12 text-center">
             <Target className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">Select a rifle to begin analysis.</p>
           </CardContent>
         </Card>
       )}

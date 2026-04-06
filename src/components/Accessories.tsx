@@ -73,13 +73,15 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
   };
 
   const accessoryTypes: Accessory['accessoryType'][] = [
-    'Bipod', 
-    'Suppressor', 
-    'Muzzle Brake', 
-    'Shooting Bag', 
-    'Sling', 
-    'Chassis', 
-    'Trigger', 
+    'Bipod',
+    'Suppressor',
+    'Muzzle Brake',
+    'Shooting Bag',
+    'Sling',
+    'Chronograph',
+    'Tripod',
+    'Rifle Case',
+    'Magazines',
     'Other'
   ];
 
@@ -88,7 +90,6 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Accessories</h2>
-          <p className="text-slate-400">Manage your shooting accessories and support gear</p>
         </div>
         <Button 
           onClick={() => setIsAdding(!isAdding)} 
@@ -140,16 +141,18 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
                   placeholder="e.g., CAL (Standard)"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-slate-300">Weight (oz)</Label>
-                <Input 
-                  type="number" 
-                  step="0.1"
-                  value={formData.weight || ''} 
-                  onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
-                  className="bg-slate-900 border-slate-700 text-white"
-                />
-              </div>
+              {formData.accessoryType === 'Shooting Bag' && (
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Weight (lbs)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.1"
+                    value={formData.weight || ''} 
+                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
+                    className="bg-slate-900 border-slate-700 text-white"
+                  />
+                </div>
+              )}
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-slate-300">Notes</Label>
                 <Input 
@@ -164,7 +167,7 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
                 <Save className="mr-2 h-4 w-4" />
                 {editingId ? 'Update' : 'Save'}
               </Button>
-              <Button onClick={resetForm} variant="outline" className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600">
+              <Button onClick={resetForm} variant="outline" className="border border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white">
                 Cancel
               </Button>
             </div>
@@ -174,13 +177,12 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {accessories.map((item) => (
-          <Card key={item.id} className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-colors">
+          <Card key={item.id} className="bg-slate-900 border-slate-800 card-tactical">
             <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
-                  <CardDescription className="text-slate-400">{item.model}</CardDescription>
-                </div>
+              <div className="flex items-start justify-between mb-2">
+                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded">
+                  {item.accessoryType}
+                </span>
                 <div className="flex gap-1">
                   <Button 
                     variant="ghost" 
@@ -200,20 +202,17 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
                   </Button>
                 </div>
               </div>
+              <div>
+                <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
+                <CardDescription className="text-slate-400">{item.model}</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Prominent Accessory Type Label - Top Left */}
-              <div className="flex justify-start">
-                <span className="inline-block bg-slate-900 text-amber-400 text-xl font-bold px-6 py-2 rounded-lg border-2 border-amber-900/50 shadow-sm">
-                  {item.accessoryType}
-                </span>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                {item.weight && (
+              <div className="space-y-2">
+                {item.weight && item.accessoryType === 'Shooting Bag' && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Weight</span>
-                    <span className="text-white font-medium">{item.weight} oz</span>
+                    <span className="text-white font-medium">{item.weight} lbs</span>
                   </div>
                 )}
                 {item.notes && (
@@ -230,7 +229,6 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
       {accessories.length === 0 && !isAdding && (
         <div className="text-center py-12 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
           <Shield className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-400">No accessories added yet</p>
           <p className="text-slate-500 text-sm">Click "Add Accessory" to get started</p>
         </div>
       )}

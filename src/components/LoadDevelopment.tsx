@@ -207,13 +207,10 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Beaker className="w-5 h-5 text-amber-400" />
-          Load Recipes
-        </h2>
+        <h2 className="text-2xl font-bold text-white">Load Recipes</h2>
         <Button 
           onClick={() => setIsAdding(!isAdding)} 
-          className="bg-slate-700 hover:bg-slate-600 text-white"
+          className="bg-amber-600 hover:bg-amber-500 text-white"
         >
           {isAdding ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           {isAdding ? 'Cancel' : 'New Load'}
@@ -238,7 +235,7 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loads.map((load) => (
-          <Card key={load.id} className="bg-slate-800 border-slate-700 flex flex-col">
+          <Card key={load.id} className="bg-slate-900 border-slate-800 card-tactical flex flex-col">
             {editingId === load.id ? (
               <CardContent className="p-4 space-y-4 flex-1">
                 <div className="flex items-center justify-between">

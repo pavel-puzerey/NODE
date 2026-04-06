@@ -4,41 +4,38 @@
 
 @layer base {
   :root {
-    --accent:        217 119 6;
-    --accent-light:  251 191 36;
-    --accent-dim:    120 53 15;
+    --accent:        180 134 58;
+    --accent-light:  201 168 76;
+    --accent-dim:    90 67 29;
+    --bronze:        #C9A84C;
+    --tungsten:      #0a0a0a;
   }
 
   body {
-    background-color: rgb(2 6 23);
-    color: rgb(241 245 249);
+    background-color: #0a0a0a;
+    color: #C9A84C;
     -webkit-font-smoothing: antialiased;
   }
 
-  input[type="number"] {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
+  /* All text defaults to bronze */
+  h1, h2, h3, h4, h5, h6 { color: #C9A84C; }
+
+  input, textarea, select {
+    color: #C9A84C;
   }
 }
 
 @layer components {
   .card-tactical {
-    background-color: rgb(15 23 42);
-    border: 1px solid rgb(30 41 59);
+    background-color: #111111;
+    border: 1px solid #222222;
     border-radius: 0.5rem;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
   .card-tactical:hover {
-    border-color: rgba(217, 119, 6, 0.45);
-    box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.12),
-                0 0 20px 0   rgba(217, 119, 6, 0.07);
-  }
-
-  .heading-tactical {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    border-color: rgba(201, 168, 76, 0.45);
+    box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.12),
+                0 0 20px 0   rgba(201, 168, 76, 0.07);
   }
 
   .stat-readout {
@@ -46,7 +43,7 @@
     font-size: 1.5rem;
     font-weight: 500;
     letter-spacing: -0.02em;
-    color: rgb(251 191 36);
+    color: #C9A84C;
   }
 
   .badge-accent {
@@ -56,8 +53,19 @@
     border-radius: 0.25rem;
     font-size: 0.75rem;
     font-family: 'JetBrains Mono', monospace;
-    background: rgba(120, 53, 15, 0.5);
-    color: rgb(251 191 36);
-    border: 1px solid rgba(217, 119, 6, 0.3);
+    background: rgba(90, 67, 29, 0.5);
+    color: #C9A84C;
+    border: 1px solid rgba(201, 168, 76, 0.3);
   }
+}
+
+@layer utilities {
+  .text-amber-400  { color: #C9A84C !important; }
+  .text-amber-500  { color: #B8942A !important; }
+  .bg-amber-600    { background-color: #d97706 !important; }
+  .hover\:bg-amber-500:hover { background-color: #f59e0b !important; }
+  .hover\:bg-amber-700:hover { background-color: #b45309 !important; }
+  .border-amber-900\/50 { border-color: rgba(90, 67, 29, 0.5) !important; }
+  .bg-amber-900\/20 { background-color: rgba(90, 67, 29, 0.2) !important; }
+  .from-amber-900\/20 { --tw-gradient-from: rgba(90, 67, 29, 0.2) !important; }
 }

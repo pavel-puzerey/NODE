@@ -4,7 +4,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Trash2, ChevronDown, ChevronUp, Search, Glasses, Crosshair, Eye, Ruler } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Search, Glasses, Crosshair, Eye, Ruler, Camera, Edit2 } from 'lucide-react';
 import { Glass } from '../types';
 import { generateId } from '../utils/id';
 
@@ -16,7 +16,9 @@ interface GlassManagerProps {
 export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
   // Form State
   const [type, setType] = useState<'rifle-scope' | 'spotting-scope' | 'binoculars' | 'rangefinder'>('rifle-scope');
   const [brand, setBrand] = useState('');
@@ -35,6 +37,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [angleComp, setAngleComp] = useState(false);
   const [ballisticCalc, setBallisticCalc] = useState(false);
   const [notes, setNotes] = useState('');
+  const [reticleImage, setReticleImage] = useState<string | null>(null);
 
   const getTypeIcon = (glassType: string) => {
     switch (glassType) {
@@ -59,8 +62,8 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const handleAdd = () => {
     if (!brand || !model) return;
 
-    const newItem: Glass = {
-      id: generateId(),
+    const item: Glass = {
+      id: editingId || generateId(),
       userId: 'user-1',
       type,
       brand,
@@ -79,11 +82,40 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       angleComp: type === 'rangefinder' ? angleComp : undefined,
       ballisticCalc: type === 'rangefinder' ? ballisticCalc : undefined,
       notes,
-      createdAt: new Date().toISOString(),
+      reticleImage: reticleImage || undefined,
+      createdAt: editingId ? (glass.find(g => g.id === editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     };
 
-    setGlass([...glass, newItem]);
+    if (editingId) {
+      setGlass(glass.map(g => g.id === editingId ? item : g));
+    } else {
+      setGlass([...glass, item]);
+    }
     resetForm();
+  };
+
+  const startEdit = (item: Glass) => {
+    setEditingId(item.id);
+    setType(item.type);
+    setBrand(item.brand);
+    setModel(item.model);
+    setMagnification(item.magnification || '');
+    setReticle(item.reticle || '');
+    setTubeSize(item.tubeSize || '');
+    setTurretType(item.turretType || '');
+    setObjectiveLens(item.objectiveLens || '');
+    setEyepiece(item.eyepiece || '');
+    setHasReticle(item.hasReticle || false);
+    setPrismType(item.prismType || 'Roof');
+    setFieldOfView(item.fieldOfView || '');
+    setWeight(item.weight || '');
+    setMaxRange(item.maxRange || '');
+    setAngleComp(item.angleComp || false);
+    setBallisticCalc(item.ballisticCalc || false);
+    setNotes(item.notes || '');
+    setReticleImage(item.reticleImage || null);
+    setIsAdding(true);
+    setExpandedId(null);
   };
 
   const handleDelete = (id: string) => {
@@ -109,6 +141,9 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     setAngleComp(false);
     setBallisticCalc(false);
     setNotes('');
+    setReticleImage(null);
+    setIsAdding(false);
+    setEditingId(null);
   };
 
   return (
@@ -116,7 +151,6 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Optics & Glass</h2>
-          <p className="text-slate-400">Manage your scopes, binoculars, and rangefinders</p>
         </div>
         {!isAdding && (
           <Button onClick={() => setIsAdding(true)} className="bg-amber-600 hover:bg-amber-700">
@@ -128,7 +162,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       {/* Add New Glass Card */}
       {isAdding && <Card className="bg-slate-900 border-slate-800 card-tactical">
         <CardHeader>
-          <CardTitle className="text-white">Add New Glass</CardTitle>
+          <CardTitle className="text-white">{editingId ? 'Edit Optic' : 'Add New Glass'}</CardTitle>
           <CardDescription className="text-slate-400">
             Enter the details of your new optic
           </CardDescription>
@@ -191,6 +225,37 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. EBR-2C"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Reticle Photo</Label>
+                {reticleImage ? (
+                  <div className="relative group">
+                    <img src={reticleImage} alt="Reticle" className="w-full h-32 object-contain rounded-lg border border-slate-700 bg-slate-950" />
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-lg">
+                      <Camera className="w-5 h-5 text-white mr-1" />
+                      <span className="text-white text-xs">Change</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setReticleImage(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }} />
+                    </label>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-amber-600 transition-colors text-slate-500 hover:text-amber-500 text-xs bg-slate-950">
+                    <Camera className="w-4 h-4" />
+                    Upload reticle image
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setReticleImage(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                    }} />
+                  </label>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Tube Size</Label>
@@ -327,9 +392,9 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
 
           <div className="flex gap-2">
             <Button onClick={handleAdd} className="bg-amber-600 hover:bg-amber-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />Add Glass
+              <Plus className="w-4 h-4 mr-2" />{editingId ? 'Update Optic' : 'Add Glass'}
             </Button>
-            <Button onClick={() => { resetForm(); setIsAdding(false); }} variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800">
+            <Button onClick={() => { resetForm(); setIsAdding(false); }} variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white">
               Cancel
             </Button>
           </div>
@@ -368,6 +433,17 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEdit(item);
+                    }}
+                    className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -417,6 +493,17 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                           <div>
                             <span className="text-slate-500 block text-xs mb-1">Reticle</span>
                             <span className="text-white">{item.reticle}</span>
+                          </div>
+                        )}
+                        {item.reticleImage && (
+                          <div className="col-span-2 md:col-span-4 mt-2">
+                            <span className="text-slate-500 block text-xs mb-1">Reticle Image <span className="text-amber-500 cursor-pointer hover:underline" onClick={() => setZoomedImage(item.reticleImage!)}>— click to zoom</span></span>
+                            <img
+                              src={item.reticleImage}
+                              alt="Reticle"
+                              className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950 cursor-zoom-in"
+                              onClick={() => setZoomedImage(item.reticleImage!)}
+                            />
                           </div>
                         )}
                         {item.tubeSize && (
@@ -516,6 +603,27 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
           ))
         )}
       </div>
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="relative max-w-5xl w-full" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setZoomedImage(null)}
+              className="absolute -top-10 right-0 text-slate-400 hover:text-white text-sm tracking-widest uppercase"
+            >
+              Close ✕
+            </button>
+            <img
+              src={zoomedImage}
+              alt="Reticle zoomed"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
