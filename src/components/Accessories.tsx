@@ -175,54 +175,47 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-2">
         {accessories.map((item) => (
-          <Card key={item.id} className="bg-slate-900 border-slate-800 card-tactical">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between mb-2">
-                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded">
+          <div key={item.id}>
+            <button
+              onClick={() => {}}
+              className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-left transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[100px] text-center">
                   {item.accessoryType}
                 </span>
-                <div className="flex gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleEdit(item)}
-                    className="text-slate-400 hover:text-white hover:bg-slate-700"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleDelete(item.id)}
-                    className="text-slate-400 hover:text-red-400 hover:bg-slate-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div>
+                  <div className="font-medium text-white text-sm">{item.brand} {item.model}</div>
+                  {item.weight && item.accessoryType === 'Shooting Bag' && (
+                    <div className="text-xs text-slate-400">{item.weight} lbs</div>
+                  )}
+                  {item.notes && (
+                    <div className="text-xs text-slate-500 mt-0.5">{item.notes}</div>
+                  )}
                 </div>
               </div>
-              <div>
-                <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
-                <CardDescription className="text-slate-400">{item.model}</CardDescription>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                  className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                  className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                {item.weight && item.accessoryType === 'Shooting Bag' && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Weight</span>
-                    <span className="text-white font-medium">{item.weight} lbs</span>
-                  </div>
-                )}
-                {item.notes && (
-                  <div className="pt-2 border-t border-slate-700">
-                    <p className="text-xs text-slate-500">{item.notes}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            </button>
+          </div>
         ))}
       </div>
 

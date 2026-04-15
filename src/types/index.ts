@@ -34,6 +34,7 @@ export interface RangeGroup {
   rounds: number;
   velocityEs: number;
   velocitySd: number;
+  velocities?: number[];
 }
 
 export interface EnvironmentalConditions {

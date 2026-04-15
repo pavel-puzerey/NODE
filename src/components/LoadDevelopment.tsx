@@ -4,7 +4,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, Edit, Trash2, Save, X, Beaker, Package, Zap } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Beaker, Package, Zap, Copy } from 'lucide-react';
 import { Load } from '../types';
 import { generateId } from '../utils/id';
 
@@ -131,6 +131,7 @@ interface LoadDevelopmentProps {
 
 export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Load>>({});
   const [newLoad, setNewLoad] = useState<Partial<Load>>({
@@ -204,6 +205,17 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
     }
   };
 
+  const copyLoad = (load: Load) => {
+    const copied: Load = {
+      ...load,
+      id: generateId(),
+      charge: load.charge,
+      notes: load.notes ? `Copy of: ${load.notes}` : 'Copy',
+      createdAt: new Date().toISOString(),
+    };
+    setLoads([...loads, copied]);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -233,11 +245,11 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-2">
         {loads.map((load) => (
-          <Card key={load.id} className="bg-slate-900 border-slate-800 card-tactical flex flex-col">
+          <div key={load.id}>
             {editingId === load.id ? (
-              <CardContent className="p-4 space-y-4 flex-1">
+              <div className="p-4 bg-slate-900 border border-slate-700 rounded-md space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Editing Recipe</span>
                   <div className="flex gap-1">
@@ -250,59 +262,87 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
                   </div>
                 </div>
                 <LoadForm data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
-              </CardContent>
+              </div>
             ) : (
-              <>
-                <CardHeader className="pb-3 bg-gradient-to-r from-amber-900/20 to-transparent border-b border-slate-700/50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="text-amber-400 font-bold text-lg leading-tight">
-                        {load.bulletId}
+              <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
+                {/* Clickable summary row */}
+                <div
+                  className="w-full flex items-center justify-between p-3 hover:bg-slate-800 transition-colors cursor-pointer"
+                  onClick={() => setExpandedId(expandedId === load.id ? null : load.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[60px] text-center font-mono">
+                      {load.charge}gr
+                    </span>
+                    <div>
+                      <div className="font-medium text-white text-sm">{load.bulletId}</div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+                        {load.powderId && (
+                          <span className="text-xs">
+                            <span className="text-slate-600">Powder: </span>
+                            <span className="text-slate-400">{load.powderId}</span>
+                          </span>
+                        )}
+                        {load.caseId && (
+                          <span className="text-xs">
+                            <span className="text-slate-600">Brass: </span>
+                            <span className="text-slate-400">{load.caseId}</span>
+                          </span>
+                        )}
                       </div>
-                      <div className="text-white text-2xl font-bold mt-1">
-                        {load.charge} <span className="text-sm font-normal text-slate-400">gr</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(load)} className="text-slate-400 hover:text-white p-1 h-8 w-8">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteLoad(load.id)} className="text-red-400 hover:text-red-300 hover:bg-red-900/20 p-1 h-8 w-8">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3 flex-1">
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
-                    <div className="bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                      <div className="text-slate-500 text-xs mb-0.5">Powder</div>
-                      <div className="text-slate-200 font-medium truncate">{load.powderId || '-'}</div>
-                    </div>
-                    <div className="bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                      <div className="text-slate-500 text-xs mb-0.5">Primer</div>
-                      <div className="text-slate-200 font-medium truncate">{load.primerId || '-'}</div>
-                    </div>
-                    <div className="bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                      <div className="text-slate-500 text-xs mb-0.5">Case</div>
-                      <div className="text-slate-200 font-medium truncate">{load.caseId || '-'}</div>
-                    </div>
-                    <div className="bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                      <div className="text-slate-500 text-xs mb-0.5">OAL</div>
-                      <div className="text-slate-200 font-medium">{load.oal ? `${load.oal}"` : '-'}</div>
-                    </div>
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="ghost" onClick={() => copyLoad(load)} className="text-slate-400 hover:text-amber-400 hover:bg-slate-700 h-8 w-8 p-0" title="Duplicate recipe">
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(load)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => deleteLoad(load.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  
-                  {load.notes && (
-                    <div className="mt-3 pt-3 border-t border-slate-700/50">
-                      <div className="text-slate-500 text-xs mb-1">Notes</div>
-                      <p className="text-slate-300 text-xs italic line-clamp-2">{load.notes}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </>
+                </div>
+
+                {/* Expanded details */}
+                {expandedId === load.id && (
+                  <div className="px-4 pb-4 pt-1 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    {load.primerId && (
+                      <div>
+                        <span className="text-slate-500 block text-xs mb-0.5">Primer</span>
+                        <span className="text-white">{load.primerId}</span>
+                      </div>
+                    )}
+                    {load.oal ? (
+                      <div>
+                        <span className="text-slate-500 block text-xs mb-0.5">OAL</span>
+                        <span className="text-white">{load.oal}"</span>
+                      </div>
+                    ) : null}
+                    {load.seatingDepthIn ? (
+                      <div>
+                        <span className="text-slate-500 block text-xs mb-0.5">Seating Depth</span>
+                        <span className="text-white">{load.seatingDepthIn}"</span>
+                      </div>
+                    ) : null}
+                    {load.neckTensionIn ? (
+                      <div>
+                        <span className="text-slate-500 block text-xs mb-0.5">Neck Tension</span>
+                        <span className="text-white">{load.neckTensionIn}"</span>
+                      </div>
+                    ) : null}
+                    {load.notes && (
+                      <div className="col-span-2 md:col-span-4">
+                        <span className="text-slate-500 block text-xs mb-0.5">Notes</span>
+                        <span className="text-slate-300 italic">{load.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-          </Card>
+          </div>
         ))}
       </div>
 

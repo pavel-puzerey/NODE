@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -18,6 +18,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [reticleUploadId, setReticleUploadId] = useState<string | null>(null);
 
   // Form State
   const [type, setType] = useState<'rifle-scope' | 'spotting-scope' | 'binoculars' | 'rangefinder'>('rifle-scope');
@@ -32,12 +33,20 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [hasReticle, setHasReticle] = useState(false);
   const [prismType, setPrismType] = useState<'Roof' | 'Porro'>('Roof');
   const [fieldOfView, setFieldOfView] = useState('');
+  const [binoMagnification, setBinoMagnification] = useState('');
   const [weight, setWeight] = useState('');
   const [maxRange, setMaxRange] = useState('');
   const [angleComp, setAngleComp] = useState(false);
   const [ballisticCalc, setBallisticCalc] = useState(false);
   const [notes, setNotes] = useState('');
   const [reticleImage, setReticleImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (reticleUploadId) {
+      const input = document.getElementById('reticle-upload-input') as HTMLInputElement;
+      if (input) input.click();
+    }
+  }, [reticleUploadId]);
 
   const getTypeIcon = (glassType: string) => {
     switch (glassType) {
@@ -77,6 +86,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       hasReticle: type === 'spotting-scope' ? hasReticle : undefined,
       prismType: type === 'binoculars' ? prismType : undefined,
       fieldOfView: type === 'binoculars' ? fieldOfView : undefined,
+      binoMagnification: type === 'binoculars' ? binoMagnification : undefined,
       weight: type === 'binoculars' ? weight : undefined,
       maxRange: type === 'rangefinder' ? maxRange : undefined,
       angleComp: type === 'rangefinder' ? angleComp : undefined,
@@ -108,6 +118,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     setHasReticle(item.hasReticle || false);
     setPrismType(item.prismType || 'Roof');
     setFieldOfView(item.fieldOfView || '');
+    setBinoMagnification((item as any).binoMagnification || '');
     setWeight(item.weight || '');
     setMaxRange(item.maxRange || '');
     setAngleComp(item.angleComp || false);
@@ -136,6 +147,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     setHasReticle(false);
     setPrismType('Roof');
     setFieldOfView('');
+    setBinoMagnification('');
     setWeight('');
     setMaxRange('');
     setAngleComp(false);
@@ -150,7 +162,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Optics & Glass</h2>
+          <h2 className="text-2xl font-bold text-white">Glass Manager</h2>
         </div>
         {!isAdding && (
           <Button onClick={() => setIsAdding(true)} className="bg-amber-600 hover:bg-amber-700">
@@ -314,6 +326,15 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
           {type === 'binoculars' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
+                <Label className="text-slate-300">Magnification × Objective (mm)</Label>
+                <Input
+                  value={binoMagnification}
+                  onChange={(e) => setBinoMagnification(e.target.value)}
+                  className="bg-slate-900 border-slate-700 text-white"
+                  placeholder="e.g. 10x42"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label className="text-slate-300">Prism Type</Label>
                 <Select value={prismType} onValueChange={(val: any) => setPrismType(val)}>
                   <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
@@ -402,9 +423,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       </Card>}
 
       {/* Glass List - Compact Buttons */}
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-white mb-3">Your Collection ({glass.length})</h3>
-        
+      <div className="space-y-2">      
         {glass.length === 0 ? (
           <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-800 rounded-lg">
             <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -416,20 +435,22 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
               {/* Expandable Button */}
               <button
                 onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                className="w-full flex items-center justify-between p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-left transition-colors group"
+                className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-left transition-colors group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-slate-900 p-2 rounded-md border border-slate-700">
-                    {getTypeIcon(item.type)}
-                  </div>
+                  <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[120px] text-center">
+                    {getTypeLabel(item.type)}
+                  </span>
                   <div>
                     <div className="font-medium text-white text-sm">
                       {item.brand} {item.model}
                     </div>
-                    <div className="text-xs text-slate-400">
-                      {getTypeLabel(item.type)}
-                      {item.magnification && ` • ${item.magnification}`}
-                    </div>
+                    {item.magnification && (
+                      <div className="text-xs text-slate-400">{item.magnification}</div>
+                    )}
+                    {(item as any).binoMagnification && !item.magnification && (
+                      <div className="text-xs text-slate-400">{(item as any).binoMagnification}</div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -497,13 +518,28 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                         )}
                         {item.reticleImage && (
                           <div className="col-span-2 md:col-span-4 mt-2">
-                            <span className="text-slate-500 block text-xs mb-1">Reticle Image <span className="text-amber-500 cursor-pointer hover:underline" onClick={() => setZoomedImage(item.reticleImage!)}>— click to zoom</span></span>
+                            <span className="text-slate-500 block text-xs mb-1">Reticle Image</span>
                             <img
                               src={item.reticleImage}
                               alt="Reticle"
-                              className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950 cursor-zoom-in"
-                              onClick={() => setZoomedImage(item.reticleImage!)}
+                              className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950 block pointer-events-none"
                             />
+                            <div className="mt-1 flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setZoomedImage(item.reticleImage!); }}
+                                className="text-xs text-amber-500 hover:text-amber-400 transition-colors"
+                              >
+                                🔍 View enlarged
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setReticleUploadId(item.id); }}
+                                className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
+                              >
+                                📷 Change photo
+                              </button>
+                            </div>
                           </div>
                         )}
                         {item.tubeSize && (
@@ -546,6 +582,12 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
 
                     {item.type === 'binoculars' && (
                       <>
+                        {(item as any).binoMagnification && (
+                          <div>
+                            <span className="text-slate-500 block text-xs mb-1">Magnification × Objective</span>
+                            <span className="text-white">{(item as any).binoMagnification}</span>
+                          </div>
+                        )}
                         {item.prismType && (
                           <div>
                             <span className="text-slate-500 block text-xs mb-1">Prism Type</span>
@@ -603,6 +645,27 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
           ))
         )}
       </div>
+      {/* Hidden file input for reticle photo change */}
+      <input
+        id="reticle-upload-input"
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file || !reticleUploadId) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setGlass(glass.map(g =>
+              g.id === reticleUploadId ? { ...g, reticleImage: ev.target?.result as string } : g
+            ));
+            setReticleUploadId(null);
+          };
+          reader.readAsDataURL(file);
+          (e.target as HTMLInputElement).value = '';
+        }}
+      />
+
       {zoomedImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"

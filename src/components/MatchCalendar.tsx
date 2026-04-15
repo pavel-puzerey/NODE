@@ -89,14 +89,57 @@ export function MatchCalendar({ matches, setMatches }: MatchCalendarProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Time</Label>
-                <Input 
-                  type="time" 
-                  value={formData.time} 
-                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  disabled={formData.isAllDay}
-                  className="bg-slate-900 border-slate-700 text-white disabled:opacity-50"
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-slate-300">Time</Label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isAllDay}
+                      onChange={(e) => setFormData({ ...formData, isAllDay: e.target.checked, time: '' })}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500"
+                    />
+                    <span className="text-xs text-slate-400 uppercase tracking-widest">All Day</span>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={formData.isAllDay ? '' : (formData.time.split(':')[0] || '')}
+                    onValueChange={(h) => {
+                      const m = formData.time.split(':')[1] || '00';
+                      setFormData({ ...formData, time: `${h}:${m}` });
+                    }}
+                    disabled={formData.isAllDay}
+                  >
+                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white disabled:opacity-40">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-700 max-h-60">
+                      {Array.from({ length: 24 }, (_, i) => {
+                        const h = i.toString().padStart(2, '0');
+                        const label = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
+                        return <SelectItem key={h} value={h}>{label}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={formData.isAllDay ? '' : (formData.time.split(':')[1] || '')}
+                    onValueChange={(m) => {
+                      const h = formData.time.split(':')[0] || '06';
+                      setFormData({ ...formData, time: `${h}:${m}` });
+                    }}
+                    disabled={formData.isAllDay}
+                  >
+                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white disabled:opacity-40">
+                      <SelectValue placeholder="Min" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-700">
+                      <SelectItem value="00">:00</SelectItem>
+                      <SelectItem value="15">:15</SelectItem>
+                      <SelectItem value="30">:30</SelectItem>
+                      <SelectItem value="45">:45</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Reminder</Label>

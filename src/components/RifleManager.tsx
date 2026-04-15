@@ -3,7 +3,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Edit, Trash2, Save, X, Crosshair, Camera } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Crosshair } from 'lucide-react';
 import { Rifle } from '../types';
 import { generateId } from '../utils/id';
 
@@ -70,17 +70,38 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
         placeholder="Jewell" 
       />
     </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Trigger Weight (lbs)</Label>
+      <Input 
+        type="number"
+        step="0.1"
+        value={(data as any).triggerWeightLbs || ''} 
+        onChange={(e) => onChange('triggerWeightLbs' as any, parseFloat(e.target.value))}
+        className="bg-slate-950 border-slate-700 text-white" 
+        placeholder="2.5" 
+      />
+    </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Barrel Life Warning (rounds)</Label>
+      <Input 
+        type="number"
+        value={(data as any).barrelLifeRounds || ''} 
+        onChange={(e) => onChange('barrelLifeRounds' as any, parseInt(e.target.value))}
+        className="bg-slate-950 border-slate-700 text-white" 
+        placeholder="e.g. 2500" 
+      />
+    </div>
   </div>
 );
 
 interface RifleManagerProps {
   rifles: Rifle[];
   setRifles: (rifles: Rifle[] | ((prev: Rifle[]) => Rifle[])) => void;
+  sessions?: any[];
 }
 
-export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
+export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [imageMap, setImageMap] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Rifle>>({});
   const [newRifle, setNewRifle] = useState<Partial<Rifle>>({
@@ -145,15 +166,12 @@ export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
     }
   };
 
-  const handleImageUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImageMap(prev => ({ ...prev, [id]: ev.target?.result as string }));
-    };
-    reader.readAsDataURL(file);
-  };
+  const roundCountMap: Record<string, number> = {};
+  sessions.forEach((session: any) => {
+    if (!session.rifleId) return;
+    const rounds = (session.groups || []).reduce((sum: number, g: any) => sum + (g.rounds || 0), 0);
+    roundCountMap[session.rifleId] = (roundCountMap[session.rifleId] || 0) + rounds;
+  });
 
   return (
     <div className="space-y-4">
@@ -184,13 +202,13 @@ export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-2">
         {rifles.map((rifle) => (
-          <Card key={rifle.id} className="bg-slate-900 border-slate-800 card-tactical overflow-hidden">
+          <div key={rifle.id}>
             {editingId === rifle.id ? (
-              <CardContent className="p-4 space-y-4">
+              <div className="p-4 bg-slate-900 border border-slate-700 rounded-md space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">Editing Profile</span>
+                  <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">Editing Rifle</span>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" onClick={cancelEdit} className="text-slate-400 hover:text-white p-1 h-8 w-8">
                       <X className="w-4 h-4" />
@@ -201,62 +219,90 @@ export function RifleManager({ rifles, setRifles }: RifleManagerProps) {
                   </div>
                 </div>
                 <RifleFields data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
-              </CardContent>
+              </div>
             ) : (
-              <>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="bg-amber-500 text-slate-900 font-bold text-lg px-3 py-1 rounded shadow-sm">
-                      {rifle.caliber}
+              <div className="w-full flex items-start justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[72px] sm:min-w-[100px] text-center flex-shrink-0">
+                    {rifle.caliber}
+                  </span>
+                  <div>
+                    <div className="font-medium text-white text-sm">{rifle.action}</div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+                      {rifle.barrelBrand && (
+                        <span className="text-xs">
+                          <span className="text-slate-600">Barrel: </span>
+                          <span className="text-slate-400">{rifle.barrelBrand}</span>
+                        </span>
+                      )}
+                      {rifle.barrelLength ? (
+                        <span className="text-xs">
+                          <span className="text-slate-600">Length: </span>
+                          <span className="text-slate-400">{rifle.barrelLength}"</span>
+                        </span>
+                      ) : null}
+                      {rifle.chassis && (
+                        <span className="text-xs">
+                          <span className="text-slate-600">Chassis: </span>
+                          <span className="text-slate-400">{rifle.chassis}</span>
+                        </span>
+                      )}
+                      {rifle.trigger && (
+                        <span className="text-xs">
+                          <span className="text-slate-600">Trigger: </span>
+                          <span className="text-slate-400">{rifle.trigger}</span>
+                        </span>
+                      )}
+                      {(rifle as any).triggerWeightLbs && (
+                        <span className="text-xs">
+                          <span className="text-slate-600">Trigger Weight: </span>
+                          <span className="text-slate-400">{(rifle as any).triggerWeightLbs} lbs</span>
+                        </span>
+                      )}
                     </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => startEdit(rifle)} className="text-slate-400 hover:text-white p-1 h-8 w-8">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteRifle(rifle.id)} className="text-red-400 hover:text-red-300 hover:bg-red-900/20 p-1 h-8 w-8">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    {/* Round count */}
+                    {(() => {
+                      const count = roundCountMap[rifle.id] || 0;
+                      const threshold = (rifle as any).barrelLifeRounds;
+                      const pct = threshold ? count / threshold : null;
+                      const warn = pct !== null && pct >= 0.9;
+                      const critical = pct !== null && pct >= 1;
+                      return (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs" style={{ color: critical ? '#ef4444' : warn ? '#f59e0b' : '#475569' }}>
+                            {count} rounds fired
+                          </span>
+                          {threshold && (
+                            <>
+                              <div className="flex-1 max-w-[120px] h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.min(100, (pct! * 100))}%`,
+                                    backgroundColor: critical ? '#ef4444' : warn ? '#f59e0b' : '#334155',
+                                  }}
+                                />
+                              </div>
+                              <span className="text-xs text-slate-600">{threshold} limit</span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <CardTitle className="text-white text-base mt-2">{rifle.action}</CardTitle>
-                  <CardDescription className="text-slate-400 text-xs">
-                    {rifle.barrelBrand} • {rifle.barrelLength}" Barrel
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
-                    <div className="text-slate-500">Chassis:</div>
-                    <div className="text-slate-200 text-right truncate">{rifle.chassis || '-'}</div>
-                    
-                    <div className="text-slate-500">Trigger:</div>
-                    <div className="text-slate-200 text-right truncate">{rifle.trigger || '-'}</div>
-                  </div>
-
-                  {/* Rifle Image */}
-                  {imageMap[rifle.id] ? (
-                    <div className="mt-3 relative group">
-                      <img
-                        src={imageMap[rifle.id]}
-                        alt={rifle.caliber}
-                        className="w-full h-36 object-cover rounded-lg border border-slate-700"
-                      />
-                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-lg">
-                        <Camera className="w-6 h-6 text-white mr-2" />
-                        <span className="text-white text-xs">Change photo</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(rifle.id, e)} />
-                      </label>
-                    </div>
-                  ) : (
-                    <label className="mt-3 flex items-center justify-center gap-2 w-full py-2 border border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-amber-600 transition-colors text-slate-500 hover:text-amber-500 text-xs">
-                      <Camera className="w-4 h-4" />
-                      Add photo
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(rifle.id, e)} />
-                    </label>
-                  )}
-                </CardContent>
-              </>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+<Button size="sm" variant="ghost" onClick={() => startEdit(rifle)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => deleteRifle(rifle.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             )}
-          </Card>
+
+          </div>
         ))}
       </div>
       

@@ -4,7 +4,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
-import { Target, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -63,15 +63,20 @@ export function AuthScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700">
-            <Target className="w-10 h-10 text-amber-400" />
-          </div>
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-amber-400 tracking-widest uppercase">NODE</h1>
-            <p className="text-slate-500 text-sm mt-1">Notebook On Data & Equipment</p>
-          </div>
+        {/* Banner */}
+        <div className="flex flex-col items-center gap-3">
+          <img
+            src="/node-banner.jpg"
+            alt="NODE"
+            className="w-full max-h-40 object-contain rounded-xl opacity-90"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <p style={{ fontFamily: 'Oswald, sans-serif' }} className="text-2xl tracking-widest uppercase font-semibold">
+            <span style={{ color: '#f59e0b' }}>N</span><span style={{ color: 'white' }}>otebook </span>
+            <span style={{ color: '#f59e0b' }}>O</span><span style={{ color: 'white' }}>n </span>
+            <span style={{ color: '#f59e0b' }}>D</span><span style={{ color: 'white' }}>ata & </span>
+            <span style={{ color: '#f59e0b' }}>E</span><span style={{ color: 'white' }}>quipment</span>
+          </p>
         </div>
 
         <Card className="bg-slate-900 border-slate-800">

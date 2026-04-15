@@ -69,3 +69,23 @@
   .bg-amber-900\/20 { background-color: rgba(90, 67, 29, 0.2) !important; }
   .from-amber-900\/20 { --tw-gradient-from: rgba(90, 67, 29, 0.2) !important; }
 }
+
+/* ── Custom scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a2a #0a0a0a;
+}

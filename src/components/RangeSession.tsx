@@ -5,9 +5,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Trash2, Save, Target, Calculator, Thermometer, Wind, Droplets, X, Upload } from 'lucide-react';
+import { Plus, Trash2, Save, Target, Calculator, Thermometer, Wind, Droplets, X, Upload, Download, Calendar, ChevronDown, ChevronUp, Pencil, Camera } from 'lucide-react';
 import { RangeSession, RangeGroup, Rifle, Load, EnvironmentalConditions } from '../types';
 import { generateId } from '../utils/id';
+import { format } from 'date-fns';
 
 interface RangeSessionLoggerProps {
   sessions: RangeSession[];
@@ -21,6 +22,8 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
   const [selectedRifleId, setSelectedRifleId] = useState('');
   const [selectedLoadId, setSelectedLoadId] = useState('');
   const [sessionNotes, setSessionNotes] = useState('');
+  const [zeroDrift, setZeroDrift] = useState('');
+  const [zeroDriftUnit, setZeroDriftUnit] = useState<'MOA' | 'MIL'>('MOA');
   
   // Environmental State
   const [envConditions, setEnvConditions] = useState<EnvironmentalConditions>({
@@ -37,6 +40,58 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
   
   // Local state to hold raw velocity strings for inputs
   const [velocityInputs, setVelocityInputs] = useState<Record<string, string>>({});
+  const [targetImages, setTargetImages] = useState<Record<string, string>>({});
+
+  const [activeView, setActiveView] = useState<'logger' | 'history'>('logger');
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
+  const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+
+  const getRifleLabel = (rifleId: string) => {
+    const rifle = rifles.find(r => r.id === rifleId);
+    return rifle ? `${rifle.caliber} - ${rifle.action}` : 'Unknown Rifle';
+  };
+
+  const getLoadLabel = (loadId: string) => {
+    const load = loads.find(l => l.id === loadId);
+    return load ? `${load.bulletWeight}gr ${load.bulletName}` : 'Unknown Load';
+  };
+
+  const deleteSession = (id: string) => {
+    setSessions((prev: RangeSession[]) => prev.filter((s: RangeSession) => s.id !== id));
+  };
+
+  const exportToCSV = () => {
+    const rows: string[][] = [
+      ['Date', 'Rifle', 'Load', 'Group #', 'Size (in)', 'ES (in)', 'MR (in)', 'Rounds', 'Vel ES (fps)', 'Vel SD (fps)', 'Notes'],
+    ];
+    sessions.forEach(session => {
+      session.groups.forEach(group => {
+        rows.push([
+          format(new Date(session.sessionDate.slice(0,10) + 'T12:00:00'), 'yyyy-MM-dd'),
+          getRifleLabel(session.rifleId),
+          getLoadLabel(session.loadId),
+          String(group.groupId),
+          String(group.groupSize),
+          String(group.extremeSpread),
+          String(group.groupSd),
+          String(group.rounds),
+          String(group.velocityEs),
+          String(group.velocitySd),
+          session.notes,
+        ]);
+      });
+    });
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'range_sessions.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const addGroup = () => {
     const id = generateId();
@@ -46,7 +101,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
       groupSize: 0,
       extremeSpread: 0,
       groupSd: 0,
-      rounds: 5,
+      rounds: 0,
       velocityEs: 0,
       velocitySd: 0,
     };
@@ -83,7 +138,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
     }
 
     setGroups(groups.map(g => 
-      g.id === id ? { ...g, velocityEs: parseFloat(es.toFixed(1)), velocitySd: parseFloat(sd.toFixed(1)) } : g
+      g.id === id ? { ...g, velocityEs: parseFloat(es.toFixed(1)), velocitySd: parseFloat(sd.toFixed(1)), rounds: velocities.length > 0 ? velocities.length : g.rounds } : g
     ));
   };
 
@@ -94,7 +149,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
     const reader = new FileReader();
 
     const processVelocities = (values: number[]) => {
-      const filtered = values.filter(v => !isNaN(v) && v > 0);
+      const filtered = values.filter(v => !isNaN(v) && v > 500 && v < 5000);
       if (filtered.length > 0) {
         const joined = filtered.join(', ');
         setVelocityInputs(prev => ({ ...prev, [id]: joined }));
@@ -102,13 +157,45 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
       }
     };
 
+    // Find the column whose header exactly matches known velocity labels
+    const findVelocityColumn = (rows: any[][]): number => {
+      // Exact/strict labels — must be the whole cell content or contain fps units
+      const EXACT = ['speed (fps)', 'velocity (fps)', 'speed(fps)', 'velocity(fps)', 'vel (fps)', 'muzzle velocity (fps)'];
+      // Search ALL rows for a header (not just first 5 — some files have late headers)
+      for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < rows[r].length; c++) {
+          const cell = String(rows[r][c] ?? '').toLowerCase().trim();
+          if (EXACT.some(l => cell === l || cell.includes(l))) return c;
+        }
+      }
+      // Fallback: pick column where most values are in 500–5000 fps range
+      const numCols = Math.max(...rows.map(r => r.length));
+      const scores: number[] = Array(numCols).fill(0);
+      rows.forEach(r => {
+        for (let c = 0; c < r.length; c++) {
+          const v = parseFloat(String(r[c] ?? ''));
+          if (!isNaN(v) && v > 500 && v < 5000) scores[c]++;
+        }
+      });
+      const best = scores.indexOf(Math.max(...scores));
+      return scores[best] > 0 ? best : 1;
+    };
+
+    // Only keep rows where first cell is a positive number (shot number) — skips summary/header rows
+    const isDataRow = (row: any[]) => {
+      const first = row[0];
+      if (first === null || first === undefined || first === '') return false;
+      const n = parseFloat(String(first).trim());
+      return !isNaN(n) && n > 0 && n < 100000;
+    };
+
     if (file.name.endsWith('.csv')) {
       reader.onload = (ev) => {
         const text = ev.target?.result as string;
-        const velocities = text
-          .split('\n')
-          .map((row: string) => row.split(',')[0].replace(/\r/g, '').trim())
-          .map((v: string) => parseFloat(v));
+        const lines = text.split('\n').map((l: string) => l.replace(/\r/g, '').trim()).filter(Boolean);
+        const rows = lines.map((l: string) => l.split(',').map((c: string) => c.trim().replace(/^"|"$/g, '')));
+        const col = findVelocityColumn(rows);
+        const velocities = rows.filter(isDataRow).map(row => parseFloat(row[col]));
         processVelocities(velocities);
       };
       reader.readAsText(file);
@@ -118,7 +205,8 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
         const workbook = read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows: any[][] = utils.sheet_to_json(sheet, { header: 1 });
-        const velocities = rows.map((row: any[]) => parseFloat(row[0]));
+        const col = findVelocityColumn(rows);
+        const velocities = rows.filter(isDataRow).map((row: any[]) => parseFloat(String(row[col] ?? '')));
         processVelocities(velocities);
       };
       reader.readAsArrayBuffer(file);
@@ -136,222 +224,396 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
     });
   };
 
+  const startEditSession = (session: RangeSession) => {
+    setEditingSessionId(session.id);
+    setSelectedRifleId(session.rifleId);
+    setSelectedLoadId(session.loadId);
+    setSessionDate(session.sessionDate.slice(0, 10));
+    setSessionNotes(session.notes || '');
+    setZeroDrift((session as any).zeroDrift || '');
+    setZeroDriftUnit((session as any).zeroDriftUnit || 'MOA');
+    setEnvConditions(session.conditions || {
+      temperature: 0, windSpeed: 0, windDirection: '', humidity: 0, pressure: 29.92, altitude: 0,
+    });
+    setGroups(session.groups);
+    setNextGroupNumber(Math.max(...session.groups.map(g => g.groupId), 0) + 1);
+    // Restore velocity inputs as empty strings (raw data not stored, ES/SD still displayed)
+    const inputs: Record<string, string> = {};
+    session.groups.forEach(g => { inputs[g.id] = ''; });
+    setVelocityInputs(inputs);
+    setIsAdding(true);
+    setActiveView('logger');
+    setExpandedSessionId(null);
+  };
+
+  const cancelForm = () => {
+    setIsAdding(false);
+    setEditingSessionId(null);
+    setSelectedRifleId('');
+    setSelectedLoadId('');
+    setSessionNotes('');
+    setZeroDrift('');
+    setZeroDriftUnit('MOA');
+    setSessionDate(new Date().toISOString().slice(0, 10));
+    setEnvConditions({ temperature: 0, windSpeed: 0, windDirection: '', humidity: 0, pressure: 29.92, altitude: 0 });
+    setGroups([]);
+    setNextGroupNumber(1);
+    setVelocityInputs({});
+  };
+
   const saveSession = () => {
     if (!selectedRifleId || !selectedLoadId) {
       alert('Please select a rifle and load before saving.');
       return;
     }
 
-    const newSession: RangeSession = {
-      id: generateId(),
-      rifleId: selectedRifleId,
-      loadId: selectedLoadId,
-      sessionDate: new Date().toISOString(),
-      notes: sessionNotes,
-      conditions: envConditions, // Save environmental data
-      groups: groups,
-      createdAt: new Date().toISOString(),
-    };
-
-    setSessions([newSession, ...sessions]);
-    
-    // Reset form
-    setSelectedRifleId('');
-    setSelectedLoadId('');
-    setSessionNotes('');
-    setEnvConditions({
-      temperature: 0,
-      windSpeed: 0,
-      windDirection: '',
-      humidity: 0,
-      pressure: 29.92,
-      altitude: 0,
+    // Attach individual velocity arrays to groups before saving
+    const groupsWithVelocities = groups.map(g => {
+      const raw = velocityInputs[g.id] || '';
+      const vels = raw.split(',').map((v: string) => parseFloat(v.trim())).filter((v: number) => !isNaN(v) && v > 0);
+      return { ...g, velocities: vels.length > 0 ? vels : (g.velocities || undefined) };
     });
-    setGroups([]);
-    setNextGroupNumber(1);
-    setVelocityInputs({});
-    setIsAdding(false);
+
+    if (editingSessionId) {
+      setSessions((prev: RangeSession[]) => prev.map((s: RangeSession) =>
+        s.id === editingSessionId
+          ? {
+              ...s,
+              rifleId: selectedRifleId,
+              loadId: selectedLoadId,
+              sessionDate: new Date(sessionDate + 'T12:00:00').toISOString(),
+              notes: sessionNotes,
+              zeroDrift: zeroDrift || undefined,
+              zeroDriftUnit: zeroDrift ? zeroDriftUnit : undefined,
+              conditions: envConditions,
+              groups: groupsWithVelocities,
+            }
+          : s
+      ));
+    } else {
+      const newSession: RangeSession = {
+        id: generateId(),
+        rifleId: selectedRifleId,
+        loadId: selectedLoadId,
+        sessionDate: new Date(sessionDate + 'T12:00:00').toISOString(),
+        notes: sessionNotes,
+        zeroDrift: zeroDrift || undefined,
+        zeroDriftUnit: zeroDrift ? zeroDriftUnit : undefined,
+        conditions: envConditions,
+        groups: groupsWithVelocities,
+        createdAt: new Date().toISOString(),
+      };
+      setSessions([newSession, ...sessions]);
+    }
+
+    cancelForm();
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Range Session Logger</h2>
-        {!isAdding && (
-          <Button onClick={() => setIsAdding(true)} className="bg-amber-600 hover:bg-amber-500 text-white">
-            <Plus className="w-4 h-4 mr-2" />New Session
-          </Button>
-        )}
-      </div>
-
-      {isAdding && (<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Setup & Environment */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="bg-slate-900 border-slate-800 card-tactical">
-            <CardHeader>
-              <CardTitle className="text-white">Equipment</CardTitle>
-              <CardDescription className="text-slate-400">Select rifle and load</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-slate-300">Rifle</Label>
-                <Select value={selectedRifleId} onValueChange={setSelectedRifleId}>
-                  <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
-                    <SelectValue placeholder="Select rifle" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-700">
-                    {rifles.map(r => (
-                      <SelectItem key={r.id} value={r.id} className="text-white">
-                        {r.caliber} - {r.action}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-slate-300">Load</Label>
-                <Select value={selectedLoadId} onValueChange={setSelectedLoadId}>
-                  <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
-                    <SelectValue placeholder="Select load" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-700">
-                    {loads.map(l => (
-                      <SelectItem key={l.id} value={l.id} className="text-white">
-                        {l.charge}gr - {l.oal}" OAL
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-900 border-slate-800 card-tactical">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Wind className="w-4 h-4 text-blue-400" />
-                Conditions
-              </CardTitle>
-              <CardDescription className="text-slate-400">Log environment data</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
-                    <Thermometer className="w-3 h-3" /> Temp (°F)
-                  </Label>
-                  <Input 
-                    type="number" 
-                    value={envConditions.temperature || ''} 
-                    onChange={(e) => setEnvConditions({ ...envConditions, temperature: parseFloat(e.target.value) || 0 })}
-                    className="bg-slate-900 border-slate-700 text-white h-9"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400 flex items-center gap-1">
-                    <Droplets className="w-3 h-3" /> Humidity (%)
-                  </Label>
-                  <Input 
-                    type="number" 
-                    value={envConditions.humidity || ''} 
-                    onChange={(e) => setEnvConditions({ ...envConditions, humidity: parseFloat(e.target.value) || 0 })}
-                    className="bg-slate-900 border-slate-700 text-white h-9"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Wind (mph)</Label>
-                  <Input 
-                    type="number" 
-                    step="0.1"
-                    value={envConditions.windSpeed || ''} 
-                    onChange={(e) => setEnvConditions({ ...envConditions, windSpeed: parseFloat(e.target.value) || 0 })}
-                    className="bg-slate-900 border-slate-700 text-white h-9"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Direction</Label>
-                  <Select 
-                    value={envConditions.windDirection} 
-                    onValueChange={(val) => setEnvConditions({ ...envConditions, windDirection: val })}
-                  >
-                    <SelectTrigger className="bg-slate-900 border-slate-700 text-white h-9">
-                      <SelectValue placeholder="Dir" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
-                      <SelectItem value="Calm">Calm</SelectItem>
-                      <SelectItem value="12 o'clock">12 o'clock</SelectItem>
-                      <SelectItem value="1 o'clock">1 o'clock</SelectItem>
-                      <SelectItem value="2 o'clock">2 o'clock</SelectItem>
-                      <SelectItem value="3 o'clock">3 o'clock</SelectItem>
-                      <SelectItem value="4 o'clock">4 o'clock</SelectItem>
-                      <SelectItem value="5 o'clock">5 o'clock</SelectItem>
-                      <SelectItem value="6 o'clock">6 o'clock</SelectItem>
-                      <SelectItem value="7 o'clock">7 o'clock</SelectItem>
-                      <SelectItem value="8 o'clock">8 o'clock</SelectItem>
-                      <SelectItem value="9 o'clock">9 o'clock</SelectItem>
-                      <SelectItem value="10 o'clock">10 o'clock</SelectItem>
-                      <SelectItem value="11 o'clock">11 o'clock</SelectItem>
-                      <SelectItem value="Variable">Variable</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Pressure (inHg)</Label>
-                  <Input 
-                    type="number" 
-                    step="0.01"
-                    value={envConditions.pressure || ''} 
-                    onChange={(e) => setEnvConditions({ ...envConditions, pressure: parseFloat(e.target.value) || 29.92 })}
-                    className="bg-slate-900 border-slate-700 text-white h-9"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Altitude (ft)</Label>
-                  <Input 
-                    type="number" 
-                    step="1"
-                    value={(envConditions as any).altitude || ''} 
-                    onChange={(e) => setEnvConditions({ ...envConditions, altitude: parseFloat(e.target.value) || 0 } as any)}
-                    className="bg-slate-900 border-slate-700 text-white h-9"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-2">
-            <Label className="text-slate-300">Session Notes</Label>
-            <Input 
-              placeholder="Mirage, light conditions..." 
-              value={sessionNotes}
-              onChange={(e) => setSessionNotes(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-white"
-            />
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold text-white">Range Session</h2>
+          <div className="flex gap-1 bg-slate-900 rounded-md p-1 border border-slate-800">
+            <button
+              onClick={() => setActiveView('logger')}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${activeView === 'logger' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            >Logger</button>
+            <button
+              onClick={() => setActiveView('history')}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${activeView === 'history' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            >History</button>
           </div>
         </div>
 
-        {/* Right Column: Groups */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="bg-slate-900 border-slate-800 card-tactical">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-white">Shooting Groups</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Log performance data
-                  </CardDescription>
+        {activeView === 'history' && (
+          <button onClick={exportToCSV} className="flex items-center gap-2 px-3 py-1.5 text-xs border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors">
+            <Download className="w-3 h-3" />Export CSV
+          </button>
+        )}
+      </div>
+
+      {activeView === 'history' && (
+        <div className="space-y-2">
+          {sessions.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
+              <p className="text-sm">No sessions recorded yet.</p>
+            </div>
+          ) : (() => {
+            // Group sessions by date key (yyyy-MM-dd)
+            const grouped: Record<string, RangeSession[]> = {};
+            [...sessions]
+              .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime())
+              .forEach(session => {
+                const dateKey = session.sessionDate.slice(0, 10);
+                if (!grouped[dateKey]) grouped[dateKey] = [];
+                grouped[dateKey].push(session);
+              });
+
+            return Object.entries(grouped).map(([dateKey, dateSessions]) => {
+              const isDateExpanded = expandedDateKey === dateKey;
+              const totalGroups = dateSessions.reduce((sum, s) => sum + s.groups.length, 0);
+
+              return (
+                <div key={dateKey} className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
+                  {/* Date header row */}
+                  <button
+                    className="w-full flex items-center justify-between p-3 hover:bg-slate-800 transition-colors text-left"
+                    onClick={() => setExpandedDateKey(isDateExpanded ? null : dateKey)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-sm font-semibold text-white">
+                        {format(new Date(dateKey + 'T12:00:00'), 'MMM dd, yyyy')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500">{dateSessions.length} {dateSessions.length === 1 ? 'session' : 'sessions'} · {totalGroups} {totalGroups === 1 ? 'group' : 'groups'}</span>
+                      {isDateExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                    </div>
+                  </button>
+
+                  {/* Session cards within this date */}
+                  {isDateExpanded && (
+                    <div className="border-t border-slate-800 px-3 py-3 space-y-2">
+                      {dateSessions.map(session => (
+                        <div key={session.id} className="bg-slate-800 border border-slate-700 rounded-md overflow-hidden">
+                          <button
+                            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-700 transition-colors text-left"
+                            onClick={() => setExpandedSessionId(expandedSessionId === session.id ? null : session.id)}
+                          >
+                            <div className="space-y-1.5">
+                              <div className="text-sm font-semibold text-white">{getRifleLabel(session.rifleId)}</div>
+                              {(() => {
+                                const load = loads.find(l => l.id === session.loadId);
+                                if (!load) return null;
+                                return (
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                    {load.charge > 0 && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-slate-500">Charge</span>
+                                        <span className="text-amber-400 font-mono font-semibold">{load.charge}gr</span>
+                                      </span>
+                                    )}
+                                    {load.bulletId && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-slate-500">Bullet</span>
+                                        <span className="text-slate-300">{load.bulletId}</span>
+                                      </span>
+                                    )}
+                                    {load.powderId && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-slate-500">Powder</span>
+                                        <span className="text-slate-300">{load.powderId}</span>
+                                      </span>
+                                    )}
+                                    {load.caseId && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-slate-500">Brass</span>
+                                        <span className="text-slate-300">{load.caseId}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500">{session.groups.length} {session.groups.length === 1 ? 'group' : 'groups'}</span>
+                              <button onClick={(e) => { e.stopPropagation(); startEditSession(session); }} className="p-1 text-slate-500 hover:text-amber-400 transition-colors" title="Edit session">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }} className="p-1 text-slate-500 hover:text-red-400 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              {expandedSessionId === session.id ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+                            </div>
+                          </button>
+
+                          {expandedSessionId === session.id && (
+                            <div className="px-3 pb-3 border-t border-slate-700">
+                              {session.conditions && (
+                                <div className="py-2.5 mb-2">
+                                  <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                                    <span><Thermometer className="w-3 h-3 inline mr-1 text-orange-400" />{session.conditions.temperature}°F</span>
+                                    <span><Wind className="w-3 h-3 inline mr-1 text-blue-400" />{session.conditions.windSpeed} mph {session.conditions.windDirection}</span>
+                                    <span><Droplets className="w-3 h-3 inline mr-1 text-cyan-400" />{session.conditions.humidity}%</span>
+                                    {session.conditions.pressure && <span>Pressure: {session.conditions.pressure} inHg</span>}
+                                    {(session.conditions as any).altitude > 0 && <span>Alt: {(session.conditions as any).altitude} ft</span>}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="space-y-2">
+                                {session.groups.map(group => (
+                                  <div key={group.id} className="bg-slate-900 rounded p-3">
+                                    <div className="flex justify-between mb-2">
+                                      <span className="text-xs font-semibold text-slate-300">Group #{group.groupId}</span>
+                                      <span className="text-xs text-slate-500">{group.rounds} rounds</span>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2 text-xs">
+                                      <div><span className="text-slate-500 block">Size</span><span className="text-white font-mono">{group.groupSize.toFixed(4)}"</span></div>
+<div><span className="text-slate-500 block">Vel ES</span><span className="text-white font-mono">{group.velocityEs} fps</span></div>
+                                      <div><span className="text-slate-500 block">Vel SD</span><span className="text-white font-mono">{group.velocitySd} fps</span></div>
+                                    </div>
+                                  </div>
+                                ))}
+                                {(session as any).zeroDrift && (
+                                  <p className="text-xs text-slate-400"><span className="text-slate-300 font-medium">Zero Drift:</span> {(session as any).zeroDrift} {(session as any).zeroDriftUnit}</p>
+                                )}
+                                {session.notes && <p className="text-xs text-slate-400 pt-2 border-t border-slate-700"><span className="text-slate-300 font-medium">Notes:</span> {session.notes}</p>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <Button onClick={addGroup} className="bg-amber-600 hover:bg-amber-500 text-white">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Group
+              );
+            });
+          })()}
+        </div>
+      )}
+
+      {activeView === 'logger' && (
+        <>
+        {!isAdding && (
+          <div
+            onClick={() => setIsAdding(true)}
+            className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+          >
+            <Plus className="w-10 h-10 text-slate-600 mb-3" />
+            <p className="text-slate-400 font-medium">New Range Session</p>
+            <p className="text-slate-600 text-sm mt-1">Click to log a session</p>
+          </div>
+        )}
+        {isAdding && (<div className="space-y-4">
+
+          {/* Session Setup Card */}
+          <Card className="bg-slate-900 border-slate-800 card-tactical">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-white text-base">Session Setup</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Rifle</Label>
+                  <Select value={selectedRifleId} onValueChange={setSelectedRifleId}>
+                    <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
+                      <SelectValue placeholder="Select rifle" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-700">
+                      {rifles.map(r => (
+                        <SelectItem key={r.id} value={r.id} className="text-white">
+                          {r.caliber} - {r.action}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Load</Label>
+                  <Select value={selectedLoadId} onValueChange={setSelectedLoadId}>
+                    <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
+                      <SelectValue placeholder="Select load" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-700">
+                      {loads.map(l => (
+                        <SelectItem key={l.id} value={l.id} className="text-white">
+                          {l.charge}gr - {l.oal}" OAL
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Date</Label>
+                  <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9" />
+                </div>
+              </div>
+
+              {/* Conditions */}
+              <div className="border-t border-slate-800 pt-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Wind className="w-3 h-3 text-blue-400" /> Conditions
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400 flex items-center gap-1 h-4"><Thermometer className="w-3 h-3" /> Temp (°F)</Label>
+                    <Input type="number" value={envConditions.temperature || ''} onChange={(e) => setEnvConditions({ ...envConditions, temperature: parseFloat(e.target.value) || 0 })} className="bg-slate-950 border-slate-700 text-white h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400 flex items-center gap-1 h-4"><Droplets className="w-3 h-3" /> Humidity (%)</Label>
+                    <Input type="number" value={envConditions.humidity || ''} onChange={(e) => setEnvConditions({ ...envConditions, humidity: parseFloat(e.target.value) || 0 })} className="bg-slate-950 border-slate-700 text-white h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400 flex items-center h-4">Wind (mph)</Label>
+                    <Input type="number" step="0.1" value={envConditions.windSpeed || ''} onChange={(e) => setEnvConditions({ ...envConditions, windSpeed: parseFloat(e.target.value) || 0 })} className="bg-slate-950 border-slate-700 text-white h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400 flex items-center h-4">Direction</Label>
+                    <Select value={envConditions.windDirection} onValueChange={(val) => setEnvConditions({ ...envConditions, windDirection: val })}>
+                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9"><SelectValue placeholder="Dir" /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700">
+                        <SelectItem value="Calm">Calm</SelectItem>
+                        <SelectItem value="12 o'clock">12 o'clock</SelectItem>
+                        <SelectItem value="1 o'clock">1 o'clock</SelectItem>
+                        <SelectItem value="2 o'clock">2 o'clock</SelectItem>
+                        <SelectItem value="3 o'clock">3 o'clock</SelectItem>
+                        <SelectItem value="4 o'clock">4 o'clock</SelectItem>
+                        <SelectItem value="5 o'clock">5 o'clock</SelectItem>
+                        <SelectItem value="6 o'clock">6 o'clock</SelectItem>
+                        <SelectItem value="7 o'clock">7 o'clock</SelectItem>
+                        <SelectItem value="8 o'clock">8 o'clock</SelectItem>
+                        <SelectItem value="9 o'clock">9 o'clock</SelectItem>
+                        <SelectItem value="10 o'clock">10 o'clock</SelectItem>
+                        <SelectItem value="11 o'clock">11 o'clock</SelectItem>
+                        <SelectItem value="Variable">Variable</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400 flex items-center h-4">Pressure (inHg)</Label>
+                    <Input type="number" step="0.01" value={envConditions.pressure || ''} onChange={(e) => setEnvConditions({ ...envConditions, pressure: parseFloat(e.target.value) || 29.92 })} className="bg-slate-950 border-slate-700 text-white h-9" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400 flex items-center h-4">Altitude (ft)</Label>
+                    <Input type="number" step="1" value={(envConditions as any).altitude || ''} onChange={(e) => setEnvConditions({ ...envConditions, altitude: parseFloat(e.target.value) || 0 } as any)} className="bg-slate-950 border-slate-700 text-white h-9" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes & Zero Drift */}
+              <div className="border-t border-slate-800 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Session Notes</Label>
+                  <Input placeholder="Mirage, light conditions..." value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Zero Drift</Label>
+                  <div className="flex gap-2">
+                    <Input type="number" step="0.01" placeholder="e.g. 0.25" value={zeroDrift} onChange={(e) => setZeroDrift(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9 flex-1" />
+                    <div className="flex gap-1 bg-slate-950 border border-slate-700 rounded-md p-1">
+                      {(['MOA', 'MIL'] as const).map(u => (
+                        <button key={u} type="button" onClick={() => setZeroDriftUnit(u)}
+                          className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-widest transition-colors ${zeroDriftUnit === u ? 'text-slate-900' : 'text-slate-500 hover:text-white'}`}
+                          style={zeroDriftUnit === u ? { backgroundColor: '#f59e0b' } : {}}>
+                          {u}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Groups */}
+          <Card className="bg-slate-900 border-slate-800 card-tactical">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white text-base">Shooting Groups</CardTitle>
+                <Button onClick={addGroup} className="bg-amber-600 hover:bg-amber-500 text-white" size="sm">
+                  <Plus className="mr-1.5 h-4 w-4" />Add Group
                 </Button>
               </div>
             </CardHeader>
@@ -361,9 +623,9 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                   No groups logged yet. Click "Add Group" to start.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                   {groups.map((group) => (
-                    <div key={group.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 space-y-3">
+                    <div key={group.id} className="bg-slate-900 border border-slate-700 rounded-lg p-3 sm:p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <h4 className="text-white font-semibold">Group #{group.groupId}</h4>
                         <Button 
@@ -387,17 +649,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                             className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-slate-400">ES (in)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.0001"
-                            value={group.extremeSpread || ''}
-                            onChange={(e) => updateGroup(group.id, 'extremeSpread', e.target.value)}
-                            className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
+<div className="space-y-1">
                           <Label className="text-xs text-slate-400">Rounds</Label>
                           <Input 
                             type="number" 
@@ -460,22 +712,26 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                           const rawMax = Math.max(...vals);
                           const mean = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
                           // Expand axis to nice 2-fps boundaries with padding
-                          const axisMin = Math.floor(rawMin / 2) * 2 - 2;
-                          const axisMax = Math.ceil(rawMax / 2) * 2 + 2;
+                          const axisMin = Math.floor(rawMin / 2) * 2 - 4;
+                          const axisMax = Math.ceil(rawMax / 2) * 2 + 4;
                           const axisRange = axisMax - axisMin;
                           const dotR = 4;
                           const pad = dotR + 4;
                           const plotH = 56;
-                          const pxPer2fps = 16;
-                          const innerW = Math.max(280, (axisRange / 2) * pxPer2fps);
+                          // Scale pixels per fps so the plot fills ~560px minimum
+                          // Use at least 8px per fps, giving good spread for tight groups
+                          const pxPerFps = Math.max(8, 560 / Math.max(axisRange, 1));
+                          const innerW = Math.max(320, axisRange * pxPerFps);
                           const plotW = innerW + pad * 2;
                           // toX maps [axisMin, axisMax] exactly to [pad, pad+innerW]
                           const toX = (v: number) => pad + ((v - axisMin) / axisRange) * innerW;
-                          // 2fps tick marks
+                          // Tick interval: pick a round number so we get ~6-10 ticks
+                          const rawTickInterval = axisRange / 8;
+                          const tickInterval = rawTickInterval <= 2 ? 2 : rawTickInterval <= 5 ? 5 : rawTickInterval <= 10 ? 10 : 20;
                           const ticks: number[] = [];
-                          for (let t = axisMin; t <= axisMax; t += 2) ticks.push(t);
+                          for (let t = Math.ceil(axisMin / tickInterval) * tickInterval; t <= axisMax; t += tickInterval) ticks.push(t);
                           return (
-                            <div className="mt-2 bg-slate-950 border border-slate-800 rounded p-2">
+                            <div className="mt-2 bg-slate-950 border border-slate-800 rounded p-2 inline-block max-w-full">
                               {/* ES / SD */}
                               <div className="flex gap-3 text-[10px] font-mono mb-2">
                                 <span><span className="text-slate-500 uppercase">ES </span><span className="text-blue-400">{group.velocityEs} fps</span></span>
@@ -534,6 +790,43 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                           );
                         })()}
                       </div>
+                      {/* Target photo */}
+                      <div className="pt-2 border-t border-slate-800">
+                        {targetImages[group.id] ? (
+                          <div className="space-y-1">
+                            <span className="text-xs text-slate-500 uppercase tracking-widest">Target Photo</span>
+                            <div className="relative group">
+                              <img
+                                src={targetImages[group.id]}
+                                alt="Target"
+                                className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950"
+                              />
+                              <label className="absolute bottom-2 right-2 cursor-pointer bg-black/70 hover:bg-black/90 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="w-3.5 h-3.5 text-white" />
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => setTargetImages(prev => ({ ...prev, [group.id]: ev.target?.result as string }));
+                                  reader.readAsDataURL(file);
+                                }} />
+                              </label>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600 hover:text-amber-400 transition-colors">
+                            <Camera className="w-3.5 h-3.5" />
+                            Add target photo
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => setTargetImages(prev => ({ ...prev, [group.id]: ev.target?.result as string }));
+                              reader.readAsDataURL(file);
+                            }} />
+                          </label>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -541,27 +834,17 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
             </CardContent>
           </Card>
 
-          <div className="flex justify-end gap-3">
-            <Button
-              onClick={() => setIsAdding(false)}
-              variant="outline"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-              size="lg"
-            >
-              <X className="mr-2 h-5 w-5" />
-              Cancel
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+            <Button onClick={() => setIsAdding(false)} variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white" size="lg">
+              <X className="mr-2 h-5 w-5" />Cancel
             </Button>
-            <Button 
-              onClick={saveSession} 
-              className="bg-amber-600 hover:bg-amber-500 text-white px-8"
-              size="lg"
-            >
-              <Save className="mr-2 h-5 w-5" />
-              Save Session
+            <Button onClick={saveSession} className="bg-amber-600 hover:bg-amber-500 text-white sm:px-8" size="lg">
+              <Save className="mr-2 h-5 w-5" />Save Session
             </Button>
           </div>
-        </div>
-      </div>)}
+        </div>)}
+        </>
+      )}
     </div>
   );
 }
