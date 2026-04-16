@@ -1,275 +1,243 @@
-import { useState, useEffect } from 'react';
-import { X, ChevronRight, ChevronLeft, Target, Search, Shield, Package, BookOpen, BarChart3, Crosshair, Calendar, Settings, Menu } from 'lucide-react';
-
-interface TourStep {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  category?: string;
-}
-
-const steps: TourStep[] = [
-  {
-    title: 'Welcome to NODE',
-    description: 'NODE is your precision rifle logbook — a single place to track every piece of equipment, every load, and every shot. This tour will walk you through each module in about 2 minutes.',
-    icon: <Crosshair className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-  },
-  {
-    title: 'Navigation',
-    description: 'Use the hamburger menu (☰) in the top-left corner to open the sidebar. Modules are grouped by category. Your last-used module is remembered between sessions.',
-    icon: <Menu className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Getting Around',
-  },
-  {
-    title: 'Rifles',
-    description: 'Log every rifle in your inventory — action, caliber, barrel, chassis, and trigger. Each rifle becomes selectable when logging range sessions, building DOPE cards, and analyzing loads.',
-    icon: <Target className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Equipment',
-  },
-  {
-    title: 'Optics & Glass',
-    description: 'Track all your optics — rifle scopes, spotting scopes, binoculars, and rangefinders. Binoculars include a magnification × objective field (e.g. 10x42). For rifle scopes, you can upload a reticle photo and zoom in at any time.',
-    icon: <Search className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Equipment',
-  },
-  {
-    title: 'Accessories',
-    description: 'Keep a record of your support gear — bipods, suppressors, muzzle brakes, shooting bags, slings, chronographs, and more.',
-    icon: <Shield className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Equipment',
-  },
-  {
-    title: 'Reloading Gear',
-    description: 'Inventory your reloading components (bullets, powder, brass, primers) and equipment (press, dies, scale, trimmer, annealer, etc.). Lot numbers and weights are tracked per item.',
-    icon: <Package className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Equipment',
-  },
-  {
-    title: 'Torque Specs',
-    description: 'Record torque specifications for every fastener on your rifles — action screws, scope rings, rail screws, and more. Specs are stored per rifle so you always have the right values at hand.',
-    icon: <Settings className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Equipment',
-  },
-  {
-    title: 'DOPE',
-    description: 'Build a DOPE card per rifle in MOA or MIL. Enter elevation holds at each distance, plus windage values for four configurable wind speeds — set the mph values directly above each column. Hit Print 3×5 to generate a field-ready card sized for an index card.',
-    icon: <Crosshair className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Shooting',
-  },
-  {
-    title: 'Range Session',
-    description: 'Log a shooting session with environmental conditions (temp, humidity, wind, pressure, altitude), then add groups with size, ES, MR, and velocities. Upload velocities from a CSV or Excel file — a dot plot with SD band is generated automatically.',
-    icon: <Crosshair className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Shooting',
-  },
-  {
-    title: 'Session History',
-    description: 'All logged sessions are accessible under the History tab inside Range Session. Expand any session to review conditions and group data. Export all sessions to CSV at any time.',
-    icon: <Calendar className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Shooting',
-  },
-  {
-    title: 'Match Calendar',
-    description: 'Schedule upcoming competitions with date, optional time, reminders, and notes. Toggle "All Day" off to set a specific time — the picker uses 15-minute increments. Events are sorted chronologically so your next match is always at the top.',
-    icon: <Calendar className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Shooting',
-  },
-  {
-    title: 'Load Recipes',
-    description: 'Document your handload recipes — bullet, powder charge, case, primer, OAL, seating depth, and neck tension. Tap any card to expand it and see the full recipe. Recipes can be duplicated as a starting point for new loads.',
-    icon: <BookOpen className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Load Development',
-  },
-  {
-    title: 'Load Analysis',
-    description: 'Visualize load performance across sessions. The Accuracy Node plots group size vs. charge weight. Velocity Consistency shows SD trends. The Load Performance Matrix maps accuracy vs. consistency for each load.',
-    icon: <BarChart3 className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Load Development',
-  },
-  {
-    title: 'Cleaning Log',
-    description: 'Track every cleaning session per rifle — date, round count since last clean, products used, and notes. Helps you identify patterns between cleaning intervals and accuracy.',
-    icon: <Settings className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'Maintenance',
-  },
-  {
-    title: 'Data Management',
-    description: 'Export a full JSON backup of all your data at any time, and restore it on any device. Find this under Data Management in the System section of the menu.',
-    icon: <Settings className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-    category: 'System',
-  },
-  {
-    title: "You're ready",
-    description: "That's everything. Start by adding your rifles and gear under Equipment, then build out your load recipes and DOPE cards. Happy shooting.",
-    icon: <Crosshair className="w-8 h-8" style={{ color: '#f59e0b' }} />,
-  },
-];
+import { useEffect } from 'react';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 
 interface AppTourProps {
   onClose: () => void;
+  setActiveTab: (tab: string) => void;
 }
 
-export function AppTour({ onClose }: AppTourProps) {
-  const [step, setStep] = useState(0);
-  const [animating, setAnimating] = useState(false);
-
-  const current = steps[step];
-  const isFirst = step === 0;
-  const isLast = step === steps.length - 1;
-
-  const go = (dir: 1 | -1) => {
-    if (animating) return;
-    setAnimating(true);
-    setTimeout(() => {
-      setStep(s => s + dir);
-      setAnimating(false);
-    }, 180);
-  };
-
-  // Close on Escape
+export function AppTour({ onClose, setActiveTab }: AppTourProps) {
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowRight' && !isLast) go(1);
-      if (e.key === 'ArrowLeft' && !isFirst) go(-1);
+    // Steps with their associated tab to switch to BEFORE showing
+    const tourSteps: { tab?: string; title: string; description: string }[] = [
+      {
+        title: 'Welcome to NODE',
+        description: 'NODE is your precision rifle logbook — equipment, loads, and sessions in one place. This tour walks you through each module. Use the buttons or arrow keys to navigate.',
+      },
+      {
+        title: 'Navigation',
+        description: 'Open the sidebar with the ☰ button in the top-left. Modules are grouped by category — Equipment, Shooting, Load Development, Maintenance, and System.',
+      },
+      {
+        tab: 'rifles',
+        title: 'Rifles',
+        description: 'Log every rifle with caliber, action, barrel, chassis, trigger, and trigger weight. Round count is tracked automatically from range sessions, with a barrel life warning threshold you can set.',
+      },
+      {
+        tab: 'glass',
+        title: 'Optics',
+        description: 'Track rifle scopes, spotting scopes, binoculars (with magnification × objective), and rangefinders. Upload a reticle photo for any scope and zoom in on demand.',
+      },
+      {
+        tab: 'ammo',
+        title: 'Ammo Inventory',
+        description: 'Track factory ammo and handload batches with quantity on hand. Each card expands to show a full usage history drawn from your range sessions.',
+      },
+      {
+        tab: 'gear',
+        title: 'Reloading Gear',
+        description: 'Inventory reloading components (bullets, powder, brass, primers) and equipment (press, dies, scale, trimmer, annealer). Lot numbers and weights are tracked per item.',
+      },
+      {
+        tab: 'torque',
+        title: 'Torque Specs',
+        description: 'Record torque values for every fastener per rifle — scope rings, rail screws, action screws, chassis screws, and more.',
+      },
+      {
+        tab: 'dope',
+        title: 'DOPE',
+        description: 'Build a DOPE card per rifle in MOA or MIL. Enter elevation holds at each distance from 100 to 3000 yards, with a notes field per row.',
+      },
+      {
+        tab: 'range',
+        title: 'Range Session',
+        description: 'Log conditions (temp, humidity, wind, pressure, altitude), select rifle and ammo type, then add shooting groups. Upload velocity data from a Garmin or Athlon CSV — a dot plot is generated automatically.',
+      },
+      {
+        tab: 'loads',
+        title: 'Load Recipes',
+        description: 'Document handloads — bullet, powder, charge, brass, primer, OAL, seating depth, and neck tension. Duplicate any recipe as a starting point for new development.',
+      },
+      {
+        tab: 'analysis',
+        title: 'Load Analysis',
+        description: 'Visualize performance after selecting a rifle. Filter by session and group. Charts include Velocity Trend, Load Performance Matrix, Accuracy Node, and Velocity SD vs Charge.',
+      },
+      {
+        tab: 'cleaning',
+        title: 'Cleaning Log',
+        description: 'Track cleaning sessions per rifle — date, rounds since last clean, products used, and notes.',
+      },
+      {
+        tab: 'calendar',
+        title: 'Match Calendar',
+        description: 'Schedule competitions with date, time, reminders, and notes. Events are sorted chronologically so your next match is always at the top.',
+      },
+      {
+        tab: 'settings',
+        title: 'Data Management',
+        description: 'Export a full JSON backup of all your data and restore it on any device. Find this under System → Data Management.',
+      },
+      {
+        title: "You're ready",
+        description: "Start by adding your rifles and gear under Equipment, then build out your load recipes and DOPE cards. Happy shooting.",
+      },
+    ];
+
+    let currentStepIndex = 0;
+
+    const driverObj = driver({
+      showProgress: true,
+      animate: true,
+      overlayColor: 'rgba(0,0,0,0.8)',
+      stagePadding: 0,
+      allowClose: true,
+      popoverClass: 'node-tour-popover',
+      progressText: '{{current}} of {{total}}',
+      nextBtnText: 'Next →',
+      prevBtnText: '← Back',
+      doneBtnText: 'Get started',
+      onDestroyStarted: () => {
+        driverObj.destroy();
+        onClose();
+      },
+      onNextClick: () => {
+        currentStepIndex = Math.min(currentStepIndex + 1, tourSteps.length - 1);
+        const nextStep = tourSteps[currentStepIndex];
+        if (nextStep?.tab) setActiveTab(nextStep.tab);
+        driverObj.moveNext();
+      },
+      onPrevClick: () => {
+        currentStepIndex = Math.max(currentStepIndex - 1, 0);
+        const prevStep = tourSteps[currentStepIndex];
+        if (prevStep?.tab) setActiveTab(prevStep.tab);
+        driverObj.movePrevious();
+      },
+      steps: tourSteps.map(s => ({
+        popover: {
+          title: s.title,
+          description: s.description,
+          side: 'over' as const,
+          align: 'center' as const,
+        },
+      })),
+    });
+
+    // Inject custom styles — override driver.js defaults completely
+    const style = document.createElement('style');
+    style.id = 'node-tour-styles';
+    style.textContent = `
+      .node-tour-popover,
+      .node-tour-popover * {
+        box-sizing: border-box;
+      }
+      .node-tour-popover {
+        background: #111111 !important;
+        border: 1px solid #2a2a2a !important;
+        border-radius: 12px !important;
+        box-shadow: 0 0 40px rgba(245,158,11,0.1) !important;
+        padding: 24px !important;
+        max-width: 380px !important;
+        min-width: 320px !important;
+      }
+      .node-tour-popover .driver-popover-title {
+        color: #ffffff !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        font-family: Oswald, sans-serif !important;
+        letter-spacing: 0.05em !important;
+        margin: 0 0 10px 0 !important;
+        padding: 0 !important;
+        background: none !important;
+        text-shadow: none !important;
+      }
+      .node-tour-popover .driver-popover-description {
+        color: #94a3b8 !important;
+        font-size: 13px !important;
+        line-height: 1.65 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: none !important;
+      }
+      .node-tour-popover .driver-popover-progress-text {
+        color: #4a4a4a !important;
+        font-size: 11px !important;
+        background: none !important;
+      }
+      .node-tour-popover .driver-popover-footer {
+        margin-top: 20px !important;
+        padding-top: 14px !important;
+        border-top: 1px solid #222 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: none !important;
+        gap: 8px !important;
+      }
+      .node-tour-popover .driver-popover-navigation-btns {
+        display: flex !important;
+        gap: 8px !important;
+        background: none !important;
+      }
+      .node-tour-popover button {
+        all: unset !important;
+        cursor: pointer !important;
+        font-family: Inter, sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        padding: 6px 14px !important;
+        border-radius: 6px !important;
+        line-height: 1.4 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
+      }
+      .node-tour-popover button.driver-popover-next-btn,
+      .node-tour-popover button.driver-popover-done-btn {
+        background: #f59e0b !important;
+        color: #0a0a0a !important;
+      }
+      .node-tour-popover button.driver-popover-next-btn:hover,
+      .node-tour-popover button.driver-popover-done-btn:hover {
+        background: #d97706 !important;
+      }
+      .node-tour-popover button.driver-popover-prev-btn {
+        background: transparent !important;
+        color: #94a3b8 !important;
+        border: 1px solid #333 !important;
+      }
+      .node-tour-popover button.driver-popover-prev-btn:hover {
+        color: #ffffff !important;
+        border-color: #555 !important;
+      }
+      .node-tour-popover button.driver-popover-close-btn {
+        background: transparent !important;
+        color: #4a4a4a !important;
+        padding: 4px !important;
+        position: absolute !important;
+        top: 12px !important;
+        right: 12px !important;
+        border: none !important;
+      }
+      .node-tour-popover button.driver-popover-close-btn:hover {
+        color: #ffffff !important;
+      }
+      .driver-popover-arrow { display: none !important; }
+    `;
+    document.head.appendChild(style);
+
+    // Switch to first tab if it has one
+    const firstStep = tourSteps[0];
+    if (firstStep?.tab) setActiveTab(firstStep.tab);
+
+    driverObj.drive();
+
+    return () => {
+      driverObj.destroy();
+      document.getElementById('node-tour-styles')?.remove();
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [step, isFirst, isLast]);
+  }, []);
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        className="relative w-full max-w-lg rounded-2xl border"
-        style={{
-          backgroundColor: '#111111',
-          borderColor: '#2a2a2a',
-          boxShadow: '0 0 60px rgba(245,158,11,0.08)',
-        }}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-600 hover:text-slate-300 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Progress bar */}
-        <div className="px-8 pt-8">
-          <div className="flex gap-1 mb-6">
-            {steps.map((_, i) => (
-              <div
-                key={i}
-                className="h-0.5 flex-1 rounded-full transition-all duration-300"
-                style={{ backgroundColor: i <= step ? '#f59e0b' : '#2a2a2a' }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div
-          className="px-8 pb-8 transition-opacity duration-180"
-          style={{ opacity: animating ? 0 : 1 }}
-        >
-          {/* Category badge */}
-          {current.category && (
-            <div className="mb-4">
-              <span
-                className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded border"
-                style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.05)' }}
-              >
-                {current.category}
-              </span>
-            </div>
-          )}
-
-          {/* Icon + title */}
-          <div className="flex items-start gap-4 mb-4">
-            <div
-              className="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}
-            >
-              {current.icon}
-            </div>
-            <div>
-              <h2
-                className="text-xl font-bold tracking-wide"
-                style={{ color: 'white', fontFamily: 'Oswald, sans-serif' }}
-              >
-                {current.title}
-              </h2>
-              <p className="text-xs mt-1" style={{ color: '#4a4a4a' }}>
-                {step + 1} of {steps.length}
-              </p>
-            </div>
-          </div>
-
-          {/* Description */}
-          <p className="text-sm leading-relaxed mb-8" style={{ color: '#94a3b8' }}>
-            {current.description}
-          </p>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => go(-1)}
-              disabled={isFirst}
-              className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition-all disabled:opacity-20"
-              style={{ color: '#94a3b8' }}
-              onMouseEnter={e => !isFirst && ((e.currentTarget as HTMLElement).style.color = 'white')}
-              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#94a3b8')}
-            >
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-
-            <button
-              onClick={() => go(-step as any)}  // jump to start via dots if needed
-              className="flex gap-1.5 items-center"
-            >
-              {steps.map((_, i) => (
-                <div
-                  key={i}
-                  onClick={(e) => { e.stopPropagation(); if (!animating) { setAnimating(true); setTimeout(() => { setStep(i); setAnimating(false); }, 180); } }}
-                  className="rounded-full cursor-pointer transition-all duration-200"
-                  style={{
-                    width: i === step ? '16px' : '6px',
-                    height: '6px',
-                    backgroundColor: i === step ? '#f59e0b' : '#2a2a2a',
-                  }}
-                />
-              ))}
-            </button>
-
-            {isLast ? (
-              <button
-                onClick={onClose}
-                className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-medium transition-all"
-                style={{ backgroundColor: '#f59e0b', color: '#0a0a0a' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#d97706')}
-                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.backgroundColor = '#f59e0b')}
-              >
-                Get started
-              </button>
-            ) : (
-              <button
-                onClick={() => go(1)}
-                className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition-all"
-                style={{ color: '#f59e0b' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'white')}
-                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#f59e0b')}
-              >
-                Next <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }

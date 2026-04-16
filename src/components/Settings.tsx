@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
-import { Download, Upload, AlertTriangle } from 'lucide-react';
+import { Download, Upload, AlertTriangle, Trash2 } from 'lucide-react';
 import { UserSettings, BackupData } from '../types';
 
 interface SettingsProps {
@@ -30,6 +30,8 @@ export function Settings({
   setGlass
 }: SettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2 | 3>(0);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const handleExport = () => {
     const backupData: BackupData = {
@@ -92,6 +94,20 @@ export function Settings({
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleDeleteAll = () => {
+    setRifles([]);
+    setLoads([]);
+    setGear([]);
+    setSessions([]);
+    setMatches([]);
+    setAccessories([]);
+    setGlass([]);
+    const keys = ['precision-rifles','precision-loads','precision-gear','precision-sessions','precision-matches','precision-accessories','precision-glass'];
+    keys.forEach(k => localStorage.removeItem(k));
+    setDeleteStep(0);
+    setDeleteConfirmText('');
   };
 
   return (
@@ -159,6 +175,92 @@ export function Settings({
                 Please ensure you have exported your current data before importing if you wish to keep it.
               </p>
             </div>
+          </div>
+
+          {/* Delete All Data */}
+          <div className="border-t border-slate-800 pt-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-red-950/20 rounded-lg border border-red-900/40">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-red-400">Delete All Data</h3>
+                  <p className="text-sm text-slate-400">Permanently erase all rifles, loads, sessions, and gear</p>
+                </div>
+              </div>
+              {deleteStep === 0 && (
+                <Button
+                  onClick={() => setDeleteStep(1)}
+                  variant="outline"
+                  className="border-red-900/60 text-red-400 hover:bg-red-950/40 hover:text-red-300 hover:border-red-700"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />Delete All
+                </Button>
+              )}
+            </div>
+
+            {/* Step 1: First confirmation */}
+            {deleteStep === 1 && (
+              <div className="mt-3 p-4 bg-red-950/20 border border-red-900/40 rounded-lg space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-300 font-medium">This will permanently delete all your data — rifles, optics, loads, sessions, gear, and matches. This cannot be undone.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => setDeleteStep(2)} className="bg-red-700 hover:bg-red-600 text-white text-sm">
+                    Yes, I want to delete everything
+                  </Button>
+                  <Button onClick={() => setDeleteStep(0)} variant="outline" className="border-slate-700 text-slate-400 hover:text-white text-sm">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Second confirmation */}
+            {deleteStep === 2 && (
+              <div className="mt-3 p-4 bg-red-950/30 border border-red-800/60 rounded-lg space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-300 font-medium">Are you absolutely sure? You will lose every session log, load recipe, and equipment record you have ever entered.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => setDeleteStep(3)} className="bg-red-700 hover:bg-red-600 text-white text-sm">
+                    I understand, continue
+                  </Button>
+                  <Button onClick={() => setDeleteStep(0)} variant="outline" className="border-slate-700 text-slate-400 hover:text-white text-sm">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Type to confirm */}
+            {deleteStep === 3 && (
+              <div className="mt-3 p-4 bg-red-950/40 border border-red-700/60 rounded-lg space-y-3">
+                <p className="text-sm text-red-300 font-medium">Type <span className="font-mono bg-red-950/60 px-1.5 py-0.5 rounded text-red-200">DELETE</span> to confirm permanent deletion.</p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type DELETE here"
+                  className="w-full bg-slate-950 border border-red-900/60 rounded px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-600"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleDeleteAll}
+                    disabled={deleteConfirmText !== 'DELETE'}
+                    className="bg-red-700 hover:bg-red-600 text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />Permanently Delete All Data
+                  </Button>
+                  <Button onClick={() => { setDeleteStep(0); setDeleteConfirmText(''); }} variant="outline" className="border-slate-700 text-slate-400 hover:text-white text-sm">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

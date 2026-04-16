@@ -101,7 +101,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen text-slate-100 font-sans">
-      {tourOpen && <AppTour onClose={() => setTourOpen(false)} />}
+      {tourOpen && <AppTour onClose={() => setTourOpen(false)} setActiveTab={setActiveTab} />}
 
       {/* Sidebar overlay backdrop */}
       {sidebarOpen && (
@@ -217,7 +217,7 @@ function AppInner() {
         {activeTab === 'glass'       && <GlassManager glass={glass} setGlass={setGlass} />}
         {activeTab === 'accessories' && <Accessories accessories={accessories} setAccessories={setAccessories} />}
         {activeTab === 'gear'        && <ReloadingGear gear={gear} setGear={setGear} />}
-        {activeTab === 'ammo'        && <AmmoInventory loads={loads} ammo={ammo} setAmmo={setAmmo} sessions={sessions} />}
+        {activeTab === 'ammo'        && <AmmoInventory loads={loads} ammo={ammo} setAmmo={setAmmo} />}
         {activeTab === 'torque'      && <TorqueLog rifles={rifles} />}
         {activeTab === 'loads'       && <LoadDevelopment loads={loads} setLoads={setLoads} gear={gear} />}
         {activeTab === 'dope'        && <Dope rifles={rifles} />}
