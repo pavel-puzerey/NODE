@@ -15,15 +15,20 @@ interface RangeSessionLoggerProps {
   setSessions: (sessions: RangeSession[] | ((prev: RangeSession[]) => RangeSession[])) => void;
   rifles: Rifle[];
   loads: Load[];
+  ammo?: any[];
+  setAmmo?: (ammo: any[] | ((prev: any[]) => any[])) => void;
 }
 
-export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: RangeSessionLoggerProps) {
+export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo = [], setAmmo }: RangeSessionLoggerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [selectedRifleId, setSelectedRifleId] = useState('');
   const [selectedLoadId, setSelectedLoadId] = useState('');
   const [sessionNotes, setSessionNotes] = useState('');
   const [zeroDrift, setZeroDrift] = useState('');
   const [zeroDriftUnit, setZeroDriftUnit] = useState<'MOA' | 'MIL'>('MOA');
+  const [ammoType, setAmmoType] = useState<'handload' | 'factory'>('handload');
+  const [ammoUsageId, setAmmoUsageId] = useState('');
+  const [shotsFired, setShotsFired] = useState('');
   
   // Environmental State
   const [envConditions, setEnvConditions] = useState<EnvironmentalConditions>({
@@ -232,6 +237,9 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
     setSessionNotes(session.notes || '');
     setZeroDrift((session as any).zeroDrift || '');
     setZeroDriftUnit((session as any).zeroDriftUnit || 'MOA');
+    setAmmoType((session as any).ammoType || 'handload');
+    setAmmoUsageId((session as any).ammoUsageId || '');
+    setShotsFired((session as any).shotsFired ? String((session as any).shotsFired) : '');
     setEnvConditions(session.conditions || {
       temperature: 0, windSpeed: 0, windDirection: '', humidity: 0, pressure: 29.92, altitude: 0,
     });
@@ -254,6 +262,9 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
     setSessionNotes('');
     setZeroDrift('');
     setZeroDriftUnit('MOA');
+    setAmmoType('handload');
+    setAmmoUsageId('');
+    setShotsFired('');
     setSessionDate(new Date().toISOString().slice(0, 10));
     setEnvConditions({ temperature: 0, windSpeed: 0, windDirection: '', humidity: 0, pressure: 29.92, altitude: 0 });
     setGroups([]);
@@ -262,8 +273,12 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
   };
 
   const saveSession = () => {
-    if (!selectedRifleId || !selectedLoadId) {
-      alert('Please select a rifle and load before saving.');
+    if (!selectedRifleId) {
+      alert('Please select a rifle before saving.');
+      return;
+    }
+    if (ammoType === 'handload' && !selectedLoadId) {
+      alert('Please select a load recipe for handload sessions.');
       return;
     }
 
@@ -285,13 +300,16 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
               notes: sessionNotes,
               zeroDrift: zeroDrift || undefined,
               zeroDriftUnit: zeroDrift ? zeroDriftUnit : undefined,
+              ammoType: ammoType,
+              ammoUsageId: ammoUsageId || undefined,
+              shotsFired: shotsFired ? parseInt(shotsFired) : undefined,
               conditions: envConditions,
               groups: groupsWithVelocities,
             }
           : s
       ));
     } else {
-      const newSession: RangeSession = {
+      const newSession = {
         id: generateId(),
         rifleId: selectedRifleId,
         loadId: selectedLoadId,
@@ -299,11 +317,22 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
         notes: sessionNotes,
         zeroDrift: zeroDrift || undefined,
         zeroDriftUnit: zeroDrift ? zeroDriftUnit : undefined,
+        ammoType: ammoType,
+        ammoUsageId: ammoUsageId || undefined,
+        shotsFired: shotsFired ? parseInt(shotsFired) : undefined,
         conditions: envConditions,
         groups: groupsWithVelocities,
         createdAt: new Date().toISOString(),
-      };
+      } as any;
       setSessions([newSession, ...sessions]);
+    }
+
+    // Deduct shots fired from ammo inventory (only on new session, not edit)
+    if (!editingSessionId && ammoUsageId && ammoUsageId !== '_none' && shotsFired && setAmmo) {
+      const shots = parseInt(shotsFired);
+      if (!isNaN(shots) && shots > 0) {
+        setAmmo(prev => prev.map(a => a.id === ammoUsageId ? { ...a, quantity: Math.max(0, a.quantity - shots) } : a));
+      }
     }
 
     cancelForm();
@@ -511,23 +540,73 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Load</Label>
-                  <Select value={selectedLoadId} onValueChange={setSelectedLoadId}>
-                    <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
-                      <SelectValue placeholder="Select load" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
-                      {loads.map(l => (
-                        <SelectItem key={l.id} value={l.id} className="text-white">
-                          {l.charge}gr - {l.oal}" OAL
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs text-slate-400">Ammo Type</Label>
+                  <div className="flex gap-1 bg-slate-950 border border-slate-700 rounded-md p-1 h-9 items-center">
+                    {(['handload', 'factory'] as const).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => { setAmmoType(t); setSelectedLoadId(''); setAmmoUsageId(''); }}
+                        className={`flex-1 py-0.5 rounded text-xs font-bold uppercase tracking-widest transition-colors ${ammoType === t ? 'text-slate-900' : 'text-slate-500 hover:text-white'}`}
+                        style={ammoType === t ? { backgroundColor: '#f59e0b' } : {}}
+                      >
+                        {t === 'handload' ? 'Handload' : 'Factory'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-400">Date</Label>
                   <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9" />
+                </div>
+              </div>
+              {/* Conditional: Load Recipe for handloads, Factory Ammo selector for factory */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ammoType === 'handload' ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Load Recipe</Label>
+                    <Select value={selectedLoadId} onValueChange={setSelectedLoadId}>
+                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
+                        <SelectValue placeholder="Select load" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700">
+                        {loads.map(l => (
+                          <SelectItem key={l.id} value={l.id} className="text-white">
+                            {l.charge}gr — {l.bulletId || ''} {l.powderId || ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Factory Ammo</Label>
+                    <Select value={ammoUsageId} onValueChange={setAmmoUsageId}>
+                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
+                        <SelectValue placeholder="Select ammo…" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700">
+                        {ammo.filter((a: any) => a.type === 'factory').length === 0
+                          ? <SelectItem value="_none" disabled className="text-slate-500">No factory ammo in inventory</SelectItem>
+                          : ammo.filter((a: any) => a.type === 'factory').map((a: any) => (
+                              <SelectItem key={a.id} value={a.id} className="text-white">
+                                {a.brand}{a.name ? ` ${a.name}` : ''} — {a.caliber} ({a.quantity} rds)
+                              </SelectItem>
+                            ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Shots Fired</Label>
+                  <Input
+                    type="number"
+                    value={shotsFired}
+                    onChange={e => setShotsFired(e.target.value)}
+                    placeholder="e.g. 44"
+                    className="bg-slate-950 border-slate-700 text-white h-9"
+                  />
                 </div>
               </div>
 
@@ -582,7 +661,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                 </div>
               </div>
 
-              {/* Notes & Zero Drift */}
+              {/* Notes & Zero Drift & Ammo */}
               <div className="border-t border-slate-800 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-400">Session Notes</Label>
@@ -604,6 +683,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads }: Ran
                   </div>
                 </div>
               </div>
+
             </CardContent>
           </Card>
 

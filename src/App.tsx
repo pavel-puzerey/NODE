@@ -22,6 +22,7 @@ import { AppTour } from './components/AppTour';
 import { Dope } from './components/Dope';
 import { CleaningLog } from './components/CleaningLog';
 import { TorqueLog } from './components/TorqueLog';
+import { AmmoInventory, AmmoItem } from './components/AmmoInventory';
 
 const ACCENT_VARS: Record<string, { DEFAULT: string; light: string; dim: string }> = {
   amber:   { DEFAULT: '217 119 6',   light: '251 191 36',  dim: '120 53 15'  },
@@ -62,6 +63,7 @@ function AppInner() {
   const [glass, setGlass]             = useGlass();
   const [sessions, setSessions]       = useSessions();
   const [matches, setMatches]         = useMatches();
+  const [ammo, setAmmo]               = useState<AmmoItem[]>([]);
 
   useEffect(() => {
     if (profile) applyTheme(profile.theme || 'slate', profile.accent || 'amber', profile.dark_mode ?? true)
@@ -77,6 +79,7 @@ function AppInner() {
       { id: 'glass',       label: 'Optics',        icon: Search    },
       { id: 'accessories', label: 'Accessories',   icon: Shield    },
       { id: 'gear',        label: 'Reloading Gear', icon: Package  },
+      { id: 'ammo',        label: 'Ammo Inventory', icon: Package  },
       { id: 'torque',      label: 'Torque Specs',  icon: Gauge     },
     ]},
     { label: 'Shooting', items: [
@@ -214,10 +217,11 @@ function AppInner() {
         {activeTab === 'glass'       && <GlassManager glass={glass} setGlass={setGlass} />}
         {activeTab === 'accessories' && <Accessories accessories={accessories} setAccessories={setAccessories} />}
         {activeTab === 'gear'        && <ReloadingGear gear={gear} setGear={setGear} />}
+        {activeTab === 'ammo'        && <AmmoInventory loads={loads} ammo={ammo} setAmmo={setAmmo} sessions={sessions} />}
         {activeTab === 'torque'      && <TorqueLog rifles={rifles} />}
         {activeTab === 'loads'       && <LoadDevelopment loads={loads} setLoads={setLoads} gear={gear} />}
         {activeTab === 'dope'        && <Dope rifles={rifles} />}
-        {activeTab === 'range'       && <RangeSessionLogger sessions={sessions} setSessions={setSessions} rifles={rifles} loads={loads} />}
+        {activeTab === 'range'       && <RangeSessionLogger sessions={sessions} setSessions={setSessions} rifles={rifles} loads={loads} ammo={ammo} setAmmo={setAmmo} />}
         {activeTab === 'calendar'    && <MatchCalendar matches={matches} setMatches={setMatches} />}
         {activeTab === 'analysis'    && <LoadAnalysis sessions={sessions} rifles={rifles} loads={loads} />}
         {activeTab === 'cleaning'    && <CleaningLog rifles={rifles} />}
