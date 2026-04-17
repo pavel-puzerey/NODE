@@ -9,11 +9,10 @@ interface AppTourProps {
 
 export function AppTour({ onClose, setActiveTab }: AppTourProps) {
   useEffect(() => {
-    // Steps with their associated tab to switch to BEFORE showing
     const tourSteps: { tab?: string; title: string; description: string }[] = [
       {
         title: 'Welcome to NODE',
-        description: 'NODE is your precision rifle logbook — equipment, loads, and sessions in one place. This tour walks you through each module. Use the buttons or arrow keys to navigate.',
+        description: 'NODE is your precision rifle logbook — equipment, loads, sessions, and analysis in one place. This tour walks you through each module. Use the buttons or arrow keys to navigate.',
       },
       {
         title: 'Navigation',
@@ -27,32 +26,37 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       {
         tab: 'glass',
         title: 'Optics',
-        description: 'Track rifle scopes, spotting scopes, binoculars (with magnification × objective), and rangefinders. Upload a reticle photo for any scope and zoom in on demand.',
+        description: 'Track rifle scopes, spotting scopes, binoculars, and rangefinders. Upload a reticle photo for any scope and zoom in on demand.',
       },
       {
-        tab: 'ammo',
-        title: 'Ammo Inventory',
-        description: 'Track factory ammo and handload batches with quantity on hand. Each card expands to show a full usage history drawn from your range sessions.',
+        tab: 'accessories',
+        title: 'Accessories',
+        description: 'Record bipods, suppressors, muzzle brakes, bags, slings, chronographs, and other support gear.',
       },
       {
         tab: 'gear',
         title: 'Reloading Gear',
-        description: 'Inventory reloading components (bullets, powder, brass, primers) and equipment (press, dies, scale, trimmer, annealer). Lot numbers and weights are tracked per item.',
+        description: 'Inventory reloading components (bullets, powder, brass, primers) and equipment (press, dies, scale, trimmer, annealer). Lot numbers tracked per item.',
+      },
+      {
+        tab: 'ammo',
+        title: 'Ammo Inventory',
+        description: 'Track factory ammo and handload batches with quantity on hand. Each card expands to show a full usage history drawn from your range sessions. Inventory updates automatically when sessions are logged.',
       },
       {
         tab: 'torque',
         title: 'Torque Specs',
-        description: 'Record torque values for every fastener per rifle — scope rings, rail screws, action screws, chassis screws, and more.',
+        description: 'Record torque values for every fastener per rifle — scope rings, rail screws, action screws, and chassis screws.',
       },
       {
         tab: 'dope',
         title: 'DOPE',
-        description: 'Build a DOPE card per rifle in MOA or MIL. Enter elevation holds at each distance from 100 to 3000 yards, with a notes field per row.',
+        description: 'Build a DOPE card per rifle in MOA or MIL. Enter elevation and windage holds from 100 to 3000 yards. Wind speed columns are editable. Hit Print 3×5 to generate a field-ready index card.',
       },
       {
         tab: 'range',
         title: 'Range Session',
-        description: 'Log conditions (temp, humidity, wind, pressure, altitude), select rifle and ammo type, then add shooting groups. Upload velocity data from a Garmin or Athlon CSV — a dot plot is generated automatically.',
+        description: 'Log conditions (temp, humidity, wind, pressure, altitude), select rifle and ammo type (handload or factory), then add shooting groups. Upload velocity data from a Garmin or Athlon CSV for automatic dot plots. Use the Target Analyzer to measure group size, mean radius, and MOA directly from a target photo.',
       },
       {
         tab: 'loads',
@@ -62,7 +66,7 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       {
         tab: 'analysis',
         title: 'Load Analysis',
-        description: 'Visualize performance after selecting a rifle. Filter by session and group. Charts include Velocity Trend, Load Performance Matrix, Accuracy Node, and Velocity SD vs Charge.',
+        description: 'Visualize performance after selecting a rifle. Filter by session and group. Charts include Velocity Trend (individual shots by charge weight), Load Performance Matrix (accuracy vs. consistency), Accuracy Node, and Velocity SD vs Charge.',
       },
       {
         tab: 'cleaning',
@@ -72,16 +76,16 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       {
         tab: 'calendar',
         title: 'Match Calendar',
-        description: 'Schedule competitions with date, time, reminders, and notes. Events are sorted chronologically so your next match is always at the top.',
+        description: 'Schedule competitions with date, time, and notes. Events are sorted chronologically so your next match is always at the top.',
       },
       {
         tab: 'settings',
         title: 'Data Management',
-        description: 'Export a full JSON backup of all your data and restore it on any device. Find this under System → Data Management.',
+        description: 'Export a full JSON backup of all your data and restore it on any device. You can also permanently delete all data here — with multiple confirmation steps to prevent accidents.',
       },
       {
         title: "You're ready",
-        description: "Start by adding your rifles and gear under Equipment, then build out your load recipes and DOPE cards. Happy shooting.",
+        description: "Start by adding your rifles and gear under Equipment, then build out your load recipes and DOPE cards. Use the Feedback button in the menu to send suggestions directly to the developer. Happy shooting.",
       },
     ];
 
@@ -104,14 +108,14 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       },
       onNextClick: () => {
         currentStepIndex = Math.min(currentStepIndex + 1, tourSteps.length - 1);
-        const nextStep = tourSteps[currentStepIndex];
-        if (nextStep?.tab) setActiveTab(nextStep.tab);
+        const next = tourSteps[currentStepIndex];
+        if (next?.tab) setActiveTab(next.tab);
         driverObj.moveNext();
       },
       onPrevClick: () => {
         currentStepIndex = Math.max(currentStepIndex - 1, 0);
-        const prevStep = tourSteps[currentStepIndex];
-        if (prevStep?.tab) setActiveTab(prevStep.tab);
+        const prev = tourSteps[currentStepIndex];
+        if (prev?.tab) setActiveTab(prev.tab);
         driverObj.movePrevious();
       },
       steps: tourSteps.map(s => ({
@@ -124,14 +128,11 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       })),
     });
 
-    // Inject custom styles — override driver.js defaults completely
     const style = document.createElement('style');
     style.id = 'node-tour-styles';
     style.textContent = `
       .node-tour-popover,
-      .node-tour-popover * {
-        box-sizing: border-box;
-      }
+      .node-tour-popover * { box-sizing: border-box; }
       .node-tour-popover {
         background: #111111 !important;
         border: 1px solid #2a2a2a !important;
@@ -220,16 +221,10 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
         right: 12px !important;
         border: none !important;
       }
-      .node-tour-popover button.driver-popover-close-btn:hover {
-        color: #ffffff !important;
-      }
+      .node-tour-popover button.driver-popover-close-btn:hover { color: #ffffff !important; }
       .driver-popover-arrow { display: none !important; }
     `;
     document.head.appendChild(style);
-
-    // Switch to first tab if it has one
-    const firstStep = tourSteps[0];
-    if (firstStep?.tab) setActiveTab(firstStep.tab);
 
     driverObj.drive();
 

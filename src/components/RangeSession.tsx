@@ -5,9 +5,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Trash2, Save, Target, Calculator, Thermometer, Wind, Droplets, X, Upload, Download, Calendar, ChevronDown, ChevronUp, Pencil, Camera } from 'lucide-react';
+import { Plus, Trash2, Save, Target, Calculator, Thermometer, Wind, Droplets, X, Upload, Download, Calendar, ChevronDown, ChevronUp, Pencil, Camera, Crosshair } from 'lucide-react';
 import { RangeSession, RangeGroup, Rifle, Load, EnvironmentalConditions } from '../types';
 import { generateId } from '../utils/id';
+import { TargetAnalyzer } from './TargetAnalyzer';
 import { format } from 'date-fns';
 
 interface RangeSessionLoggerProps {
@@ -46,6 +47,8 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
   // Local state to hold raw velocity strings for inputs
   const [velocityInputs, setVelocityInputs] = useState<Record<string, string>>({});
   const [targetImages, setTargetImages] = useState<Record<string, string>>({});
+  const [targetAnalyses, setTargetAnalyses] = useState<Record<string, any>>({});
+  const [analyzerGroupId, setAnalyzerGroupId] = useState<string | null>(null);
 
   const [activeView, setActiveView] = useState<'logger' | 'history'>('logger');
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -503,6 +506,33 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
         </div>
       )}
 
+      {analyzerGroupId != null && (() => {
+        const _gid: string = analyzerGroupId;
+        if (!targetImages[_gid]) return null;
+        return (
+          <TargetAnalyzer
+            imageData={targetImages[_gid]}
+            groupId={_gid}
+            distance={(groups.find((g: any) => g.id === _gid) as any)?.distance || ''}
+            onSave={(analysis: any, annotatedImage: string) => {
+              setTargetAnalyses((prev: any) => ({ ...prev, [_gid]: analysis }));
+              setTargetImages((prev: any) => ({ ...prev, [_gid]: annotatedImage }));
+              setGroups((prev: any) => prev.map((g: any) => {
+                if (g.id !== _gid) return g;
+                return {
+                  ...g,
+                  distance: analysis.distance || g.distance || '',
+                  groupSize: analysis.groupSize || g.groupSize,
+                  groupSizeMoa: analysis.groupSizeMoa ?? g.groupSizeMoa ?? 0,
+                  groupSd: analysis.meanRadius || g.groupSd,
+                };
+              }));
+              setAnalyzerGroupId(null);
+            }}
+            onClose={() => setAnalyzerGroupId(null)}
+          />
+        );
+      })()}
       {activeView === 'logger' && (
         <>
         {!isAdding && (
@@ -719,29 +749,48 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs text-slate-400">Size (in)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.0001"
-                            value={group.groupSize || ''}
-                            onChange={(e) => updateGroup(group.id, 'groupSize', e.target.value)}
+                        <div className="space-y-1 col-span-2 sm:col-span-1">
+                          <Label className="text-xs text-slate-400">Distance</Label>
+                          <Input
+                            placeholder="e.g. 100 yds"
+                            value={(group as any).distance || ''}
+                            onChange={(e) => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, distance: e.target.value } as any : g))}
                             className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
                           />
                         </div>
-<div className="space-y-1">
+                        <div className="space-y-1">
                           <Label className="text-xs text-slate-400">Rounds</Label>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             value={group.rounds || ''}
                             onChange={(e) => updateGroup(group.id, 'rounds', e.target.value)}
                             className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
+                          <Label className="text-xs text-slate-400">Size (in)</Label>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            value={group.groupSize || ''}
+                            onChange={(e) => updateGroup(group.id, 'groupSize', e.target.value)}
+                            className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-slate-400">Size (MOA)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={(group as any).groupSizeMoa || ''}
+                            onChange={(e) => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, groupSizeMoa: parseFloat(e.target.value) || 0 } as any : g))}
+                            className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
                           <Label className="text-xs text-slate-400">MR (in)</Label>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             step="0.0001"
                             value={group.groupSd || ''}
                             onChange={(e) => updateGroup(group.id, 'groupSd', e.target.value)}
@@ -756,8 +805,8 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                             <Calculator className="w-3 h-3 text-amber-400" />
                             <Label className="text-xs text-slate-400">Velocities (comma separated)</Label>
                           </div>
-                          <label className="flex items-center gap-1 cursor-pointer text-xs text-slate-500 hover:text-amber-400 transition-colors">
-                            <Upload className="w-3 h-3" />
+                          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-400 hover:text-amber-300 border border-amber-700/50 bg-amber-900/10 hover:bg-amber-900/20 px-2.5 py-1 rounded-md transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
                             <span>Upload CSV/Excel</span>
                             <input
                               type="file"
@@ -873,30 +922,71 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                       {/* Target photo */}
                       <div className="pt-2 border-t border-slate-800">
                         {targetImages[group.id] ? (
-                          <div className="space-y-1">
-                            <span className="text-xs text-slate-500 uppercase tracking-widest">Target Photo</span>
-                            <div className="relative group">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500 uppercase tracking-widest">Target Photo</span>
+                              <div className="flex items-center gap-2">
+                                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md transition-colors">
+                                  <Camera className="w-3.5 h-3.5" />Replace
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = (ev) => {
+                                        setTargetImages((prev: any) => ({ ...prev, [group.id]: ev.target?.result as string }));
+                                        setTargetAnalyses((prev: any) => { const n = { ...prev }; delete n[group.id]; return n; });
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  onClick={() => setAnalyzerGroupId(group.id)}
+                                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 px-2.5 py-1 rounded-md transition-colors"
+                                >
+                                  <Crosshair className="w-3.5 h-3.5" />Analyze
+                                </button>
+                              </div>
+                            </div>
+                            <div className="inline-block">
                               <img
                                 src={targetImages[group.id]}
                                 alt="Target"
-                                className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950"
+                                style={{ width: 'auto', height: 'auto', maxWidth: '400px', maxHeight: '400px' }}
+                                className="object-contain rounded-lg border border-slate-700 bg-slate-950 block"
                               />
-                              <label className="absolute bottom-2 right-2 cursor-pointer bg-black/70 hover:bg-black/90 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera className="w-3.5 h-3.5 text-white" />
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  const reader = new FileReader();
-                                  reader.onload = (ev) => setTargetImages(prev => ({ ...prev, [group.id]: ev.target?.result as string }));
-                                  reader.readAsDataURL(file);
-                                }} />
-                              </label>
                             </div>
+                            {targetAnalyses[group.id] && (
+                              <div className="p-2 bg-slate-950 rounded border border-slate-800 text-xs space-y-1">
+                                {targetAnalyses[group.id].distance && (
+                                  <div className="text-amber-400 font-semibold mb-1">@ {targetAnalyses[group.id].distance}</div>
+                                )}
+                                {[
+                                  { label: 'Group Size', inch: targetAnalyses[group.id].groupSize, moa: targetAnalyses[group.id].groupSizeMoa },
+                                  { label: 'Mean Radius', inch: targetAnalyses[group.id].meanRadius, moa: targetAnalyses[group.id].meanRadiusMoa },
+                                  { label: 'Width', inch: targetAnalyses[group.id].width, moa: null },
+                                  { label: 'Height', inch: targetAnalyses[group.id].height, moa: null },
+                                ].map(({ label, inch, moa }: any) => (
+                                  <div key={label} className="flex justify-between items-center">
+                                    <span className="text-slate-500">{label}</span>
+                                    <div className="flex items-center gap-2">
+                                      {moa !== null && moa !== undefined && <span className="text-slate-400 font-mono">{moa} MOA</span>}
+                                      <span className="text-white font-mono">{inch}"</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600 hover:text-amber-400 transition-colors">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md transition-colors">
                             <Camera className="w-3.5 h-3.5" />
-                            Add target photo
+                            Add Target Photo
                             <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;

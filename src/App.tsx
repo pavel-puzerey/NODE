@@ -15,10 +15,11 @@ import { LoadAnalysis } from './components/LoadAnalysis';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useRifles, useLoads, useGear, useAccessories, useGlass, useSessions, useMatches } from './hooks/useSupabaseData';
 import { UserSettings } from './types';
-import { Target, Package, Calendar, Settings as SettingsIcon, Shield, Search, BarChart3, Menu, X, Crosshair, Wrench, Gauge } from 'lucide-react';
+import { Target, Package, Calendar, Settings as SettingsIcon, Shield, Search, BarChart3, Menu, X, Crosshair, Wrench, Gauge, MessageSquare } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { useState } from 'react';
 import { AppTour } from './components/AppTour';
+import { FeedbackModal } from './components/FeedbackModal';
 import { Dope } from './components/Dope';
 import { CleaningLog } from './components/CleaningLog';
 import { TorqueLog } from './components/TorqueLog';
@@ -49,6 +50,7 @@ function applyTheme(_theme: string, _accent: string, _darkMode: boolean) {
 function AppInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { profile } = useAuth();
   const [activeTab, setActiveTab]           = useLocalStorage<string>('node-active-tab', '');
   const [settings, setSettings]             = useLocalStorage<UserSettings>('precision-settings', {
@@ -96,12 +98,14 @@ function AppInner() {
     ]},
     { label: 'System', items: [
       { id: 'settings', label: 'Data Management', icon: SettingsIcon },
+      { id: 'feedback', label: 'Submit Feedback', icon: MessageSquare },
     ]},
   ];
 
   return (
     <div className="min-h-screen text-slate-100 font-sans">
       {tourOpen && <AppTour onClose={() => setTourOpen(false)} setActiveTab={setActiveTab} />}
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
 
       {/* Sidebar overlay backdrop */}
       {sidebarOpen && (
@@ -137,7 +141,7 @@ function AppInner() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                      onClick={() => { if (item.id === 'feedback') { setFeedbackOpen(true); setSidebarOpen(false); } else { setActiveTab(item.id); setSidebarOpen(false); } }}
                       className={`w-full flex items-center px-3 py-2.5 rounded-md text-sm transition-colors text-left ${
                         isActive
                           ? 'bg-amber-900/30 text-amber-400 font-medium'
@@ -180,7 +184,7 @@ function AppInner() {
             <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
               <button
                 onClick={() => setTourOpen(true)}
-                className="text-xs text-slate-500 hover:text-amber-400 transition-colors tracking-widest uppercase"
+                className="text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 px-3 py-1.5 rounded-md transition-colors tracking-widest uppercase"
               >
                 Tour
               </button>

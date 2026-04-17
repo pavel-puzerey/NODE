@@ -3,8 +3,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Trash2, Edit, Save, X, Package2, ChevronDown, ChevronUp } from 'lucide-react';
-import { Load, RangeSession } from '../types';
+import { Plus, Trash2, Edit, Save, X, Package2 } from 'lucide-react';
+import { Load } from '../types';
 
 export type AmmoType = 'factory' | 'handload';
 
@@ -40,16 +40,14 @@ interface AmmoInventoryProps {
   loads: Load[];
   ammo: AmmoItem[];
   setAmmo: (ammo: AmmoItem[] | ((prev: AmmoItem[]) => AmmoItem[])) => void;
-  sessions?: RangeSession[];
 }
 
 const BULLET_TYPES = ['FMJ', 'HP', 'JHP', 'SP', 'BTHP', 'ELD-M', 'ELD-X', 'Hybrid', 'VLD', 'HPBT', 'Ballistic Tip', 'Other'];
 
-export function AmmoInventory({ loads, ammo, setAmmo, sessions = [] }: AmmoInventoryProps) {
+export function AmmoInventory({ loads, ammo, setAmmo }: AmmoInventoryProps) {
   const [activeTab, setActiveTab] = useState<AmmoType>('factory');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Factory form state
   const [fBrand, setFBrand] = useState('');
@@ -136,17 +134,6 @@ export function AmmoInventory({ loads, ammo, setAmmo, sessions = [] }: AmmoInven
     return `${load.charge}gr — ${load.bulletId || ''} ${load.powderId || ''}`.trim();
   };
 
-  const getUsageHistory = (ammoId: string) => {
-    return sessions
-      .filter(s => (s as any).ammoUsageId === ammoId && (s as any).shotsFired > 0)
-      .map(s => ({
-        date: s.sessionDate.slice(0, 10),
-        shots: (s as any).shotsFired as number,
-        rifleId: s.rifleId,
-      }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
   const factoryItems = ammo.filter(a => a.type === 'factory') as FactoryAmmo[];
   const handloadItems = ammo.filter(a => a.type === 'handload') as HandloadAmmo[];
   const activeItems = activeTab === 'factory' ? factoryItems : handloadItems;
@@ -155,11 +142,7 @@ export function AmmoInventory({ loads, ammo, setAmmo, sessions = [] }: AmmoInven
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Ammo Inventory</h2>
-        {!isAdding && (
-          <Button onClick={() => setIsAdding(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
-            <Plus className="w-4 h-4 mr-2" />Add Ammo
-          </Button>
-        )}
+
       </div>
 
       {/* Tab selector */}
@@ -281,133 +264,72 @@ export function AmmoInventory({ loads, ammo, setAmmo, sessions = [] }: AmmoInven
 
       {/* Items list */}
       {activeItems.length === 0 && !isAdding && (
-        <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-lg">
-          <Package2 className="w-12 h-12 mx-auto mb-3 text-slate-700" />
-          <p className="text-slate-500 text-sm">No {activeTab === 'factory' ? 'factory ammo' : 'handload batches'} in inventory</p>
+        <div
+          onClick={() => setIsAdding(true)}
+          className="text-center py-16 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+        >
+          <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium text-slate-400">Add your first {activeTab === 'factory' ? 'factory ammo' : 'handload batch'}</p>
+          <p className="text-sm">Click to start tracking inventory.</p>
         </div>
       )}
 
       <div className="space-y-2">
-        {activeTab === 'factory' && factoryItems.map(item => {
-          const history = getUsageHistory(item.id);
-          const isExpanded = expandedId === item.id;
-          return (
-            <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
-              <div className="flex items-center justify-between p-3 hover:bg-slate-800 transition-colors">
-                <button className="flex items-center gap-3 flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
-                  <span className="text-xs font-bold font-mono px-2 py-0.5 rounded border flex-shrink-0" style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.05)' }}>
-                    {item.caliber}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white">{item.brand}{item.name ? ` — ${item.name}` : ''}</div>
-                    <div className="flex flex-wrap gap-x-3 text-xs mt-0.5">
-                      {item.bulletWeight && <span><span className="text-slate-600">Wt: </span><span className="text-slate-400">{item.bulletWeight}gr</span></span>}
-                      {item.bulletType && <span><span className="text-slate-600">Type: </span><span className="text-slate-400">{item.bulletType}</span></span>}
-                      {item.lot && <span><span className="text-slate-600">Lot: </span><span className="text-slate-400">{item.lot}</span></span>}
-                      {item.pricePerRound && <span><span className="text-slate-600">Price: </span><span className="text-slate-400">${item.pricePerRound}/rd</span></span>}
-                      {item.notes && <span className="text-slate-500 italic">{item.notes}</span>}
-                    </div>
-                  </div>
-                </button>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                  <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1">
-                    <button onClick={() => updateQuantity(item.id, -1)} className="text-slate-500 hover:text-white w-4 text-center">−</button>
-                    <span className="text-sm font-mono text-white w-10 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.id, 1)} className="text-slate-500 hover:text-white w-4 text-center">+</button>
-                  </div>
-                  <button onClick={() => populateForm(item)} className="p-1.5 text-slate-500 hover:text-amber-400 transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => setExpandedId(isExpanded ? null : item.id)} className="p-1.5 text-slate-500">
-                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
+        {activeTab === 'factory' && factoryItems.map(item => (
+          <div key={item.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 transition-colors">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <span className="text-xs font-bold font-mono px-2 py-0.5 rounded border flex-shrink-0" style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.05)' }}>
+                {item.caliber}
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-white">{item.brand}{item.name ? ` — ${item.name}` : ''}</div>
+                <div className="flex flex-wrap gap-x-3 text-xs mt-0.5">
+                  {item.bulletWeight && <span><span className="text-slate-600">Wt: </span><span className="text-slate-400">{item.bulletWeight}gr</span></span>}
+                  {item.bulletType && <span><span className="text-slate-600">Type: </span><span className="text-slate-400">{item.bulletType}</span></span>}
+                  {item.lot && <span><span className="text-slate-600">Lot: </span><span className="text-slate-400">{item.lot}</span></span>}
+                  {item.pricePerRound && <span><span className="text-slate-600">Price: </span><span className="text-slate-400">${item.pricePerRound}/rd</span></span>}
+                  {item.notes && <span className="text-slate-500 italic">{item.notes}</span>}
                 </div>
               </div>
-              {isExpanded && (
-                <div className="border-t border-slate-800 px-4 py-3">
-                  <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">Usage History</p>
-                  {history.length === 0 ? (
-                    <p className="text-xs text-slate-600">No usage recorded yet</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {history.map((h, i) => {
-                        const [y, m, d] = h.date.split('-');
-                        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                        return (
-                          <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="text-slate-400">{months[parseInt(m)-1]} {d}, {y}</span>
-                            <span className="text-amber-400 font-mono">{h.shots} rds</span>
-                          </div>
-                        );
-                      })}
-                      <div className="border-t border-slate-800 pt-1 mt-1 flex justify-between text-xs">
-                        <span className="text-slate-500">Total fired</span>
-                        <span className="text-slate-300 font-mono">{history.reduce((s, h) => s + h.shots, 0)} rds</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
-          );
-        })}
+            <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+              {/* Quantity adjuster */}
+              <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1">
+                <button onClick={() => updateQuantity(item.id, -1)} className="text-slate-500 hover:text-white w-4 text-center">−</button>
+                <span className="text-sm font-mono text-white w-10 text-center">{item.quantity}</span>
+                <button onClick={() => updateQuantity(item.id, 1)} className="text-slate-500 hover:text-white w-4 text-center">+</button>
+              </div>
+              <button onClick={() => populateForm(item)} className="p-1.5 text-slate-500 hover:text-amber-400 transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+              <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+        ))}
 
         {activeTab === 'handload' && handloadItems.map(item => {
           const [y, m, d] = item.dateLoaded.split('-');
           const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
           const dateLabel = `${months[parseInt(m)-1]} ${d}, ${y}`;
-          const history = getUsageHistory(item.id);
-          const isExpanded = expandedId === item.id;
           return (
-            <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
-              <div className="flex items-center justify-between p-3 hover:bg-slate-800 transition-colors">
-                <button className="flex items-center gap-3 flex-1 min-w-0 text-left" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white">{getLoadLabel(item.loadId)}</div>
-                    <div className="flex flex-wrap gap-x-3 text-xs mt-0.5">
-                      <span><span className="text-slate-600">Loaded: </span><span className="text-slate-400">{dateLabel}</span></span>
-                      {item.lot && <span><span className="text-slate-600">Batch: </span><span className="text-slate-400">{item.lot}</span></span>}
-                      {item.notes && <span className="text-slate-500 italic">{item.notes}</span>}
-                    </div>
+            <div key={item.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-md hover:bg-slate-800 transition-colors">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-white">{getLoadLabel(item.loadId)}</div>
+                  <div className="flex flex-wrap gap-x-3 text-xs mt-0.5">
+                    <span><span className="text-slate-600">Loaded: </span><span className="text-slate-400">{dateLabel}</span></span>
+                    {item.lot && <span><span className="text-slate-600">Batch: </span><span className="text-slate-400">{item.lot}</span></span>}
+                    {item.notes && <span className="text-slate-500 italic">{item.notes}</span>}
                   </div>
-                </button>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                  <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1">
-                    <button onClick={() => updateQuantity(item.id, -1)} className="text-slate-500 hover:text-white w-4 text-center">−</button>
-                    <span className="text-sm font-mono text-white w-10 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.id, 1)} className="text-slate-500 hover:text-white w-4 text-center">+</button>
-                  </div>
-                  <button onClick={() => populateForm(item)} className="p-1.5 text-slate-500 hover:text-amber-400 transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => setExpandedId(isExpanded ? null : item.id)} className="p-1.5 text-slate-500">
-                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
                 </div>
               </div>
-              {isExpanded && (
-                <div className="border-t border-slate-800 px-4 py-3">
-                  <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">Usage History</p>
-                  {history.length === 0 ? (
-                    <p className="text-xs text-slate-600">No usage recorded yet</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {history.map((h, i) => {
-                        const [hy, hm, hd] = h.date.split('-');
-                        const hmonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                        return (
-                          <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="text-slate-400">{hmonths[parseInt(hm)-1]} {hd}, {hy}</span>
-                            <span className="text-amber-400 font-mono">{h.shots} rds</span>
-                          </div>
-                        );
-                      })}
-                      <div className="border-t border-slate-800 pt-1 mt-1 flex justify-between text-xs">
-                        <span className="text-slate-500">Total fired</span>
-                        <span className="text-slate-300 font-mono">{history.reduce((s, h) => s + h.shots, 0)} rds</span>
-                      </div>
-                    </div>
-                  )}
+              <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-2 py-1">
+                  <button onClick={() => updateQuantity(item.id, -1)} className="text-slate-500 hover:text-white w-4 text-center">−</button>
+                  <span className="text-sm font-mono text-white w-10 text-center">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.id, 1)} className="text-slate-500 hover:text-white w-4 text-center">+</button>
                 </div>
-              )}
+                <button onClick={() => populateForm(item)} className="p-1.5 text-slate-500 hover:text-amber-400 transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
             </div>
           );
         })}

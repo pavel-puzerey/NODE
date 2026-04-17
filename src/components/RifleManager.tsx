@@ -177,13 +177,6 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Rifle Inventory</h2>
-        <Button 
-          onClick={() => setIsAdding(!isAdding)} 
-          className="bg-amber-600 hover:bg-amber-500 text-white"
-        >
-          {isAdding ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {isAdding ? 'Cancel' : 'Add Rifle'}
-        </Button>
       </div>
 
       {isAdding && (
@@ -221,9 +214,9 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                 <RifleFields data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
               </div>
             ) : (
-              <div className="w-full flex items-start justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md transition-colors">
+              <div className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md transition-colors">
                 <div className="flex items-center gap-3">
-                  <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[72px] sm:min-w-[100px] text-center flex-shrink-0">
+                  <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[100px] text-center">
                     {rifle.caliber}
                   </span>
                   <div>
@@ -291,7 +284,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                     })()}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                <div className="flex items-center gap-1">
 <Button size="sm" variant="ghost" onClick={() => startEdit(rifle)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -307,10 +300,13 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
       </div>
       
       {rifles.length === 0 && !isAdding && (
-        <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
-          <Crosshair className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-lg font-medium">No rifles in inventory</p>
-          <p className="text-sm">Add your first rifle to start tracking data.</p>
+        <div
+          onClick={() => setIsAdding(true)}
+          className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+        >
+          <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium text-slate-400">Add your first rifle</p>
+          <p className="text-sm">Click to start tracking data.</p>
         </div>
       )}
     </div>

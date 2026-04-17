@@ -29,11 +29,13 @@ export interface RangeGroup {
   id: string;
   groupId: number;
   groupSize: number;
+  groupSizeMoa?: number;
   extremeSpread: number;
   groupSd: number;
   rounds: number;
   velocityEs: number;
   velocitySd: number;
+  distance?: string;
   velocities?: number[];
 }
 

@@ -335,22 +335,22 @@ export function Dope({ rifles }: DopeProps) {
         <div className="space-y-3">
           {/* Header row */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 uppercase tracking-widest">
+            <span className="text-sm font-bold text-white tracking-wide">
               {selectedRifle.caliber} — {selectedRifle.action}
             </span>
             <div className="flex items-center gap-4">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-widest"
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-900 bg-amber-500 hover:bg-amber-400 px-3 py-1.5 rounded-md transition-colors"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Print 3×5
               </button>
               <button
                 onClick={clearCard}
-                className="text-xs text-slate-600 hover:text-red-400 transition-colors tracking-widest uppercase"
+                className="flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 border border-red-900/50 bg-red-950/20 hover:bg-red-950/40 px-3 py-1.5 rounded-md transition-colors"
               >
-                Clear all
+                Clear All
               </button>
             </div>
           </div>
@@ -358,9 +358,9 @@ export function Dope({ rifles }: DopeProps) {
           {/* Column headers — wind speed inputs live inline above their columns */}
           <div className="grid grid-cols-12 gap-1 px-2 pb-1 border-b border-slate-800 items-end">
             {/* Dist header */}
-            <div className="col-span-2 text-xs text-slate-600 uppercase tracking-widest pb-1">Dist</div>
+            <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-widest pb-1">Distance</div>
             {/* Elev header */}
-            <div className="col-span-2 text-xs text-slate-600 uppercase tracking-widest pb-1">Elev</div>
+            <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-widest pb-1">Elevation</div>
             {/* Wind columns — editable speed input + mph label stacked above column */}
             {selectedCard.windSpeeds.map((speed, idx) => (
               <div key={idx} className="col-span-2 flex flex-col items-center gap-0.5">
@@ -372,7 +372,7 @@ export function Dope({ rifles }: DopeProps) {
                   onChange={e => handleWindSpeedChange(idx, e.target.value)}
                   className="w-14 h-7 text-center text-xs font-mono font-bold bg-slate-950 border border-slate-700 rounded text-amber-400 focus:outline-none focus:border-amber-600"
                 />
-                <span className="text-xs text-slate-600 uppercase tracking-widest">mph</span>
+                <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">mph</span>
               </div>
             ))}
           </div>
@@ -424,17 +424,17 @@ export function Dope({ rifles }: DopeProps) {
             <button
               onClick={addDistance}
               disabled={maxDistance >= 3000}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              <Plus className="w-3 h-3" />
-              Add {maxDistance < 3000 ? `${maxDistance + 100} yd` : '(max 3000 yd)'}
+              <Plus className="w-3.5 h-3.5" />
+              {maxDistance < 3000 ? `+ Add ${maxDistance + 100} yd` : 'Max 3000 yd'}
             </button>
             {selectedCard.rows.length > BASE_DISTANCES.length && (
               <button
                 onClick={removeLastDistance}
-                className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-red-400 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-400 border border-slate-700 hover:border-red-900/50 bg-slate-900 hover:bg-red-950/20 px-3 py-1.5 rounded-md transition-colors"
               >
-                <Minus className="w-3 h-3" />
+                <Minus className="w-3.5 h-3.5" />
                 Remove {maxDistance} yd
               </button>
             )}

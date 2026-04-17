@@ -107,13 +107,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
         <div>
           <h2 className="text-2xl font-bold text-white">Reloading Gear</h2>
         </div>
-        <Button 
-          onClick={() => setIsAdding(!isAdding)} 
-          className="bg-amber-600 hover:bg-amber-700 text-white"
-        >
-          {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {isAdding ? 'Cancel' : 'Add Gear'}
-        </Button>
+
       </div>
 
       {isAdding && (
@@ -214,17 +208,15 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                   </Select>
                 </div>
               )}
-              {(['Bullet', 'Case', 'Powder', 'Primer'] as GearItem['gearType'][]).includes(formData.gearType!) && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-slate-300">Lot Number</Label>
-                  <Input 
-                    value={formData.lot || ''} 
-                    onChange={(e) => setFormData({ ...formData, lot: e.target.value })}
-                    className="bg-slate-900 border-slate-700 text-white"
-                    placeholder="e.g., LOT-12345"
-                  />
-                </div>
-              )}
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-slate-300">Lot Number</Label>
+                <Input 
+                  value={formData.lot || ''} 
+                  onChange={(e) => setFormData({ ...formData, lot: e.target.value })}
+                  className="bg-slate-900 border-slate-700 text-white"
+                  placeholder="e.g., LOT-12345"
+                />
+              </div>
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-slate-300">Notes</Label>
                 <Input 
@@ -247,60 +239,83 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
         </Card>
       )}
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {gear.map((item) => (
-          <div key={item.id} className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md transition-colors">
-            <div className="flex items-center gap-3">
-              <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[120px] text-center">
-                {item.gearType}
-              </span>
-              <div>
-                <div className="font-medium text-white text-sm">{item.brand} {item.model}</div>
-                <div className="flex gap-3 mt-0.5">
-                  {item.weight && (
-                    <span className="text-xs text-slate-400">{item.weight} {item.gearType === 'Powder' ? 'lbs' : 'gr'}</span>
-                  )}
-                  {item.diameter && (
-                    <span className="text-xs text-slate-400">{item.diameter}"</span>
-                  )}
-                  {item.primerSize && (
-                    <span className="text-xs text-slate-400">{item.primerSize}</span>
-                  )}
-                  {item.lot && (['Bullet', 'Case', 'Powder', 'Primer'] as GearItem['gearType'][]).includes(item.gearType) && (
-                    <span className="text-xs text-slate-400">Lot: {item.lot}</span>
-                  )}
-                  {item.notes && (
-                    <span className="text-xs text-slate-500">{item.notes}</span>
-                  )}
+          <Card key={item.id} className="bg-slate-900 border-slate-800 card-tactical">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between mb-2">
+                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded">
+                  {item.gearType}
+                </span>
+                <div className="flex gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleEdit(item)}
+                    className="text-slate-400 hover:text-white hover:bg-slate-700"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleDelete(item.id)}
+                    className="text-slate-400 hover:text-red-400 hover:bg-slate-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleEdit(item)}
-                className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleDelete(item.id)}
-                className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+              <div>
+                <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
+                <CardDescription className="text-slate-400">{item.model}</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                {item.weight && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Weight</span>
+                    <span className="text-white font-medium">{item.weight} {item.gearType === 'Powder' ? 'lbs' : 'gr'}</span>
+                  </div>
+                )}
+                {item.diameter && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Diameter</span>
+                    <span className="text-white font-medium">{item.diameter}"</span>
+                  </div>
+                )}
+                {item.lot && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Lot #</span>
+                    <span className="text-white font-medium">{item.lot}</span>
+                  </div>
+                )}
+                {item.primerSize && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Size</span>
+                    <span className="text-white font-medium">{item.primerSize}</span>
+                  </div>
+                )}
+                {item.notes && (
+                  <div className="pt-2 border-t border-slate-700">
+                    <p className="text-xs text-slate-500">{item.notes}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {gear.length === 0 && !isAdding && (
-        <div className="text-center py-12 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
-          <Package className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-500 text-sm">Click "Add Gear" to get started</p>
+        <div
+          onClick={() => setIsAdding(true)}
+          className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+        >
+          <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium text-slate-400">Add your first item</p>
+          <p className="text-sm">Click to start tracking reloading gear.</p>
         </div>
       )}
     </div>

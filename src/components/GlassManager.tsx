@@ -164,11 +164,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
         <div>
           <h2 className="text-2xl font-bold text-white">Glass Manager</h2>
         </div>
-        {!isAdding && (
-          <Button onClick={() => setIsAdding(true)} className="bg-amber-600 hover:bg-amber-700">
-            <Plus className="w-4 h-4 mr-2" />Add Optic
-          </Button>
-        )}
+
       </div>
 
       {/* Add New Glass Card */}
@@ -424,10 +420,14 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
 
       {/* Glass List - Compact Buttons */}
       <div className="space-y-2">      
-        {glass.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-800 rounded-lg">
-            <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>No glass added yet</p>
+        {glass.length === 0 && !isAdding ? (
+          <div
+            onClick={() => setIsAdding(true)}
+            className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+          >
+            <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="text-lg font-medium text-slate-400">Add your first optic</p>
+            <p className="text-sm">Click to start tracking glass.</p>
           </div>
         ) : (
           glass.map((item) => (
@@ -447,9 +447,6 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                     </div>
                     {item.magnification && (
                       <div className="text-xs text-slate-400">{item.magnification}</div>
-                    )}
-                    {(item as any).binoMagnification && !item.magnification && (
-                      <div className="text-xs text-slate-400">{(item as any).binoMagnification}</div>
                     )}
                   </div>
                 </div>

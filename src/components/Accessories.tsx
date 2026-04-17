@@ -91,13 +91,7 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
         <div>
           <h2 className="text-2xl font-bold text-white">Accessories</h2>
         </div>
-        <Button 
-          onClick={() => setIsAdding(!isAdding)} 
-          className="bg-amber-600 hover:bg-amber-700 text-white"
-        >
-          {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {isAdding ? 'Cancel' : 'Add Accessory'}
-        </Button>
+
       </div>
 
       {isAdding && (
@@ -175,54 +169,65 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
         </Card>
       )}
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {accessories.map((item) => (
-          <div key={item.id}>
-            <button
-              onClick={() => {}}
-              className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-left transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[100px] text-center">
+          <Card key={item.id} className="bg-slate-900 border-slate-800 card-tactical">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between mb-2">
+                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded">
                   {item.accessoryType}
                 </span>
-                <div>
-                  <div className="font-medium text-white text-sm">{item.brand} {item.model}</div>
-                  {item.weight && item.accessoryType === 'Shooting Bag' && (
-                    <div className="text-xs text-slate-400">{item.weight} lbs</div>
-                  )}
-                  {item.notes && (
-                    <div className="text-xs text-slate-500 mt-0.5">{item.notes}</div>
-                  )}
+                <div className="flex gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleEdit(item)}
+                    className="text-slate-400 hover:text-white hover:bg-slate-700"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleDelete(item.id)}
+                    className="text-slate-400 hover:text-red-400 hover:bg-slate-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-                  className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                  className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+              <div>
+                <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
+                <CardDescription className="text-slate-400">{item.model}</CardDescription>
               </div>
-            </button>
-          </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                {item.weight && item.accessoryType === 'Shooting Bag' && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Weight</span>
+                    <span className="text-white font-medium">{item.weight} lbs</span>
+                  </div>
+                )}
+                {item.notes && (
+                  <div className="pt-2 border-t border-slate-700">
+                    <p className="text-xs text-slate-500">{item.notes}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {accessories.length === 0 && !isAdding && (
-        <div className="text-center py-12 bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-700">
-          <Shield className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-500 text-sm">Click "Add Accessory" to get started</p>
+        <div
+          onClick={() => setIsAdding(true)}
+          className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+        >
+          <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium text-slate-400">Add your first accessory</p>
+          <p className="text-sm">Click to start tracking gear.</p>
         </div>
       )}
     </div>
