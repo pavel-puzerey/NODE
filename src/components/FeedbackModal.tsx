@@ -18,14 +18,17 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
     if (!message.trim()) return;
     setStatus('sending');
     try {
-      const formData = new FormData();
-      formData.append('category', category);
-      formData.append('message', message);
-      formData.append('email', email || 'Not provided');
-      const res = await fetch('https://formspree.io/f/xvzdaalo', {
+      const res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        headers: { 'Accept': 'application/json' },
-        body: formData,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: '243fa991-1853-4aeb-a8c7-dab578418c52',
+          subject: `NODE Feedback: ${category}`,
+          from_name: 'NODE App',
+          category,
+          message,
+          email: email || 'Not provided',
+        }),
       });
       if (res.ok) {
         setStatus('sent');
