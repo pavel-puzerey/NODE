@@ -22,7 +22,7 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-          access_key: '243fa991-1853-4aeb-a8c7-dab578418c52',
+          access_key: 'f4f0e432-b6f4-4585-abcd-d9a983b984fa',
           subject: `NODE Feedback: ${category}`,
           from_name: 'NODE App',
           category,
