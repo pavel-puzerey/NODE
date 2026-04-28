@@ -156,13 +156,33 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
 
     const reader = new FileReader();
 
-    const processVelocities = (values: number[]) => {
-      const filtered = values.filter(v => !isNaN(v) && v > 500 && v < 5000);
-      if (filtered.length > 0) {
-        const joined = filtered.join(', ');
+    const processVelocitiesWithTimes = (values: number[], times: string[]) => {
+      const pairs = values.map((v, i) => ({ v, t: times[i] || '' }))
+        .filter(p => !isNaN(p.v) && p.v > 500 && p.v < 5000);
+      if (pairs.length > 0) {
+        const joined = pairs.map(p => p.v).join(', ');
         setVelocityInputs(prev => ({ ...prev, [id]: joined }));
         handleVelocityInput(id, joined);
+        // Store timestamps on the group
+        setGroups(prev => prev.map(g =>
+          g.id === id ? { ...g, velocityTimes: pairs.map(p => p.t) } as any : g
+        ));
       }
+    };
+
+    const processVelocities = (values: number[]) => {
+      processVelocitiesWithTimes(values, []);
+    };
+
+    const findTimeColumn = (rows: any[][]): number => {
+      const TIME_LABELS = ['time', 'timestamp', 'shot time', 'time (hh:mm:ss)', 'time of day'];
+      for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < rows[r].length; c++) {
+          const cell = String(rows[r][c] ?? '').toLowerCase().trim();
+          if (TIME_LABELS.some(l => cell === l || cell.includes(l))) return c;
+        }
+      }
+      return -1;
     };
 
     // Find the column whose header exactly matches known velocity labels
@@ -203,8 +223,11 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
         const lines = text.split('\n').map((l: string) => l.replace(/\r/g, '').trim()).filter(Boolean);
         const rows = lines.map((l: string) => l.split(',').map((c: string) => c.trim().replace(/^"|"$/g, '')));
         const col = findVelocityColumn(rows);
-        const velocities = rows.filter(isDataRow).map(row => parseFloat(row[col]));
-        processVelocities(velocities);
+        const timeCol = findTimeColumn(rows);
+        const dataRows = rows.filter(isDataRow);
+        const velocities = dataRows.map(row => parseFloat(row[col]));
+        const times = timeCol >= 0 ? dataRows.map(row => String(row[timeCol] ?? '')) : [];
+        processVelocitiesWithTimes(velocities, times);
       };
       reader.readAsText(file);
     } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
@@ -214,8 +237,11 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows: any[][] = utils.sheet_to_json(sheet, { header: 1 });
         const col = findVelocityColumn(rows);
-        const velocities = rows.filter(isDataRow).map((row: any[]) => parseFloat(String(row[col] ?? '')));
-        processVelocities(velocities);
+        const timeCol = findTimeColumn(rows);
+        const dataRows = rows.filter(isDataRow);
+        const velocities = dataRows.map((row: any[]) => parseFloat(String(row[col] ?? '')));
+        const times = timeCol >= 0 ? dataRows.map((row: any[]) => String(row[timeCol] ?? '')) : [];
+        processVelocitiesWithTimes(velocities, times);
       };
       reader.readAsArrayBuffer(file);
     }
@@ -545,7 +571,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
             <p className="text-slate-600 text-sm mt-1">Click to log a session</p>
           </div>
         )}
-        {isAdding && (<div className="space-y-4">
+        {isAdding && (<div className="space-y-4 max-w-2xl">
 
           {/* Session Setup Card */}
           <Card className="bg-slate-900 border-slate-800 card-tactical">
@@ -553,7 +579,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
               <CardTitle className="text-white text-base">Session Setup</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-400">Rifle</Label>
                   <Select value={selectedRifleId} onValueChange={setSelectedRifleId}>
@@ -645,7 +671,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <Wind className="w-3 h-3 text-blue-400" /> Conditions
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-400 flex items-center gap-1 h-4"><Thermometer className="w-3 h-3" /> Temp (°F)</Label>
                     <Input type="number" value={envConditions.temperature || ''} onChange={(e) => setEnvConditions({ ...envConditions, temperature: parseFloat(e.target.value) || 0 })} className="bg-slate-950 border-slate-700 text-white h-9" />
@@ -700,7 +726,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-400">Zero Drift</Label>
                   <div className="flex gap-2">
-                    <Input type="number" step="0.01" placeholder="e.g. 0.25" value={zeroDrift} onChange={(e) => setZeroDrift(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9 flex-1" />
+                    <Input type="number" step="0.01" value={zeroDrift} onChange={(e) => setZeroDrift(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9 flex-1" />
                     <div className="flex gap-1 bg-slate-950 border border-slate-700 rounded-md p-1">
                       {(['MOA', 'MIL'] as const).map(u => (
                         <button key={u} type="button" onClick={() => setZeroDriftUnit(u)}
@@ -750,16 +776,15 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1 col-span-2 sm:col-span-1">
-                          <Label className="text-xs text-slate-400">Distance</Label>
+                          <Label className="text-xs text-slate-400">Distance (yds)</Label>
                           <Input
-                            placeholder="e.g. 100 yds"
                             value={(group as any).distance || ''}
                             onChange={(e) => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, distance: e.target.value } as any : g))}
                             className="bg-slate-950 border-slate-700 text-white h-8 text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-slate-400">Rounds</Label>
+                          <Label className="text-xs text-slate-400">Shots Fired</Label>
                           <Input
                             type="number"
                             value={group.rounds || ''}
@@ -803,18 +828,33 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Calculator className="w-3 h-3 text-amber-400" />
-                            <Label className="text-xs text-slate-400">Velocities (comma separated)</Label>
+                            <Label className="text-xs text-slate-400">Velocities (enter manually or upload from a CSV or Excel file)</Label>
                           </div>
-                          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-400 hover:text-amber-300 border border-amber-700/50 bg-amber-900/10 hover:bg-amber-900/20 px-2.5 py-1 rounded-md transition-colors">
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>Upload CSV/Excel</span>
-                            <input
-                              type="file"
-                              accept=".csv,.xlsx,.xls"
-                              className="hidden"
-                              onChange={(e) => handleVelocityFileUpload(group.id, e)}
-                            />
-                          </label>
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-400 hover:text-amber-300 border border-amber-700/50 bg-amber-900/10 hover:bg-amber-900/20 px-2.5 py-1 rounded-md transition-colors">
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Upload Velocity Data</span>
+                              <input
+                                type="file"
+                                accept=".csv,.xlsx,.xls"
+                                className="hidden"
+                                onChange={(e) => handleVelocityFileUpload(group.id, e)}
+                              />
+                            </label>
+                            {!targetImages[group.id] && (
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-amber-400 hover:text-amber-300 border border-amber-700/50 bg-amber-900/10 hover:bg-amber-900/20 px-2.5 py-1 rounded-md transition-colors">
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>Add Target Photo</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => setTargetImages(prev => ({ ...prev, [group.id]: ev.target?.result as string }));
+                                  reader.readAsDataURL(file);
+                                }} />
+                              </label>
+                            )}
+                          </div>
                         </div>
                         <Input 
                           placeholder="e.g. 2750, 2755, 2748"
@@ -983,19 +1023,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                               </div>
                             )}
                           </div>
-                        ) : (
-                          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md transition-colors">
-                            <Camera className="w-3.5 h-3.5" />
-                            Add Target Photo
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => setTargetImages(prev => ({ ...prev, [group.id]: ev.target?.result as string }));
-                              reader.readAsDataURL(file);
-                            }} />
-                          </label>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))}

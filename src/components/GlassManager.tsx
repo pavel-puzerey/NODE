@@ -164,7 +164,11 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
         <div>
           <h2 className="text-2xl font-bold text-white">Glass Manager</h2>
         </div>
-
+        {!isAdding && glass.length > 0 && (
+          <button onClick={() => setIsAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors">
+            <Plus className="w-3.5 h-3.5" />Add Optic
+          </button>
+        )}
       </div>
 
       {/* Add New Glass Card */}
@@ -198,7 +202,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 className="bg-slate-900 border-slate-700 text-white"
-                placeholder="e.g. Vortex"
+                placeholder={({'rifle-scope':'e.g. Vortex','spotting-scope':'e.g. Swarovski','binoculars':'e.g. Leica','rangefinder':'e.g. Leica'} as Record<string,string>)[type] || 'Brand'}
               />
             </div>
 
@@ -208,7 +212,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className="bg-slate-900 border-slate-700 text-white"
-                placeholder="e.g. PST Gen II"
+                placeholder={({'rifle-scope':'e.g. PST Gen II 5-25x50','spotting-scope':'e.g. ATX 85','binoculars':'e.g. Noctivid 10x42','rangefinder':'e.g. Rangemaster CRF 3500.COM'} as Record<string,string>)[type] || 'Model'}
               />
             </div>
           </div>

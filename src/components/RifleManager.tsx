@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Edit, Trash2, Save, X, Crosshair } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Crosshair, Camera } from 'lucide-react';
 import { Rifle } from '../types';
 import { generateId } from '../utils/id';
 
@@ -19,7 +19,7 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
       <Label className="text-slate-400 text-xs">Caliber</Label>
       <Input 
         value={data.caliber || ''} 
-        onChange={(e) => onChange('caliber', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('caliber', e.target.value)}
         className="bg-slate-950 border-slate-700 text-white" 
         placeholder="6.5 Creedmoor" 
       />
@@ -28,16 +28,16 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
       <Label className="text-slate-400 text-xs">Action</Label>
       <Input 
         value={data.action || ''} 
-        onChange={(e) => onChange('action', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('action', e.target.value)}
         className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="Remington 700" 
+        placeholder="Zermatt Origin" 
       />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Barrel Brand</Label>
       <Input 
         value={data.barrelBrand || ''} 
-        onChange={(e) => onChange('barrelBrand', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelBrand', e.target.value)}
         className="bg-slate-950 border-slate-700 text-white" 
         placeholder="Bartlein" 
       />
@@ -47,7 +47,7 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
       <Input 
         type="number"
         value={data.barrelLength || ''} 
-        onChange={(e) => onChange('barrelLength', parseFloat(e.target.value))}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelLength', parseFloat(e.target.value))}
         className="bg-slate-950 border-slate-700 text-white" 
         placeholder="26" 
       />
@@ -56,18 +56,18 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
       <Label className="text-slate-400 text-xs">Chassis/Stock</Label>
       <Input 
         value={data.chassis || ''} 
-        onChange={(e) => onChange('chassis', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('chassis', e.target.value)}
         className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="MDT ACC" 
+        placeholder="MDT ACC Elite" 
       />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Trigger</Label>
       <Input 
         value={data.trigger || ''} 
-        onChange={(e) => onChange('trigger', e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('trigger', e.target.value)}
         className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="Jewell" 
+        placeholder="TriggerTech Diamond" 
       />
     </div>
     <div className="space-y-1">
@@ -76,7 +76,7 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
         type="number"
         step="0.1"
         value={(data as any).triggerWeightLbs || ''} 
-        onChange={(e) => onChange('triggerWeightLbs' as any, parseFloat(e.target.value))}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('triggerWeightLbs' as any, parseFloat(e.target.value))}
         className="bg-slate-950 border-slate-700 text-white" 
         placeholder="2.5" 
       />
@@ -86,7 +86,7 @@ const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
       <Input 
         type="number"
         value={(data as any).barrelLifeRounds || ''} 
-        onChange={(e) => onChange('barrelLifeRounds' as any, parseInt(e.target.value))}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelLifeRounds' as any, parseInt(e.target.value))}
         className="bg-slate-950 border-slate-700 text-white" 
         placeholder="e.g. 2500" 
       />
@@ -102,6 +102,8 @@ interface RifleManagerProps {
 
 export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [rifleImages, setRifleImages] = useState<Record<string, string>>({});
+  const [newRifleImage, setNewRifleImage] = useState<string>('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Rifle>>({});
   const [newRifle, setNewRifle] = useState<Partial<Rifle>>({
@@ -131,6 +133,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
       createdAt: new Date().toISOString(),
     };
 
+    if (newRifleImage) setRifleImages(prev => ({ ...prev, [rifle.id]: newRifleImage }));
     setRifles([...rifles, rifle]);
     setNewRifle({
       action: '',
@@ -141,6 +144,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
       trigger: '',
     });
     setIsAdding(false);
+    setNewRifleImage('');
   };
 
   const startEdit = (rifle: Rifle) => {
@@ -177,6 +181,11 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Rifle Inventory</h2>
+        {!isAdding && rifles.length > 0 && (
+          <button onClick={() => setIsAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors">
+            <Plus className="w-3.5 h-3.5" />Add Rifle
+          </button>
+        )}
       </div>
 
       {isAdding && (
@@ -186,7 +195,37 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
           </CardHeader>
           <CardContent className="space-y-4">
             <RifleFields data={newRifle} onChange={(field, value) => setNewRifle({ ...newRifle, [field]: value })} />
+            <div className="pt-2 border-t border-slate-800">
+              {newRifleImage ? (
+                <div className="relative group/img inline-block" style={{ width: '25%' }}>
+                  <img src={newRifleImage} alt="Rifle" className="w-full h-auto object-contain rounded-lg border border-slate-700 bg-slate-950 block" />
+                  <label className="absolute bottom-2 right-2 cursor-pointer bg-amber-600 hover:bg-amber-500 rounded-md px-2 py-1 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center gap-1">
+                    <Camera className="w-3.5 h-3.5 text-white" /><span className="text-white text-xs font-semibold">Replace</span>
+                    <input type="file" accept="image/*" className="hidden"
+                      onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setNewRifleImage(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }} />
+                  </label>
+                </div>
+              ) : (
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-md transition-colors">
+                  <Camera className="w-3.5 h-3.5" />Add Rifle Photo
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setNewRifleImage(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                    }} />
+                </label>
+              )}
+            </div>
             <div className="flex justify-end gap-2 pt-2">
+              <Button onClick={() => setIsAdding(false)} variant="outline" className="border-slate-600 text-slate-400 hover:text-white hover:bg-slate-800">Cancel</Button>
               <Button onClick={handleAdd} className="bg-amber-600 hover:bg-amber-700 text-white">
                 <Save className="w-4 h-4 mr-2" />Save Rifle
               </Button>
@@ -212,6 +251,36 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                   </div>
                 </div>
                 <RifleFields data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
+                <div className="pt-2 border-t border-slate-800">
+                  {rifleImages[editingId!] ? (
+                    <div className="relative group/img inline-block" style={{ width: '25%' }}>
+                      <img src={rifleImages[editingId!]} alt="Rifle"
+                        className="w-full h-auto object-contain rounded-lg border border-slate-700 bg-slate-950 block" />
+                      <label className="absolute bottom-2 right-2 cursor-pointer bg-amber-600 hover:bg-amber-500 rounded-md px-2 py-1 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5 text-white" /><span className="text-white text-xs font-semibold">Replace</span>
+                        <input type="file" accept="image/*" className="hidden"
+                          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const file = e.target.files?.[0]; if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setRifleImages(prev => ({ ...prev, [editingId!]: ev.target?.result as string }));
+                            reader.readAsDataURL(file);
+                          }} />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-md transition-colors">
+                      <Camera className="w-3.5 h-3.5" />Add Rifle Photo
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const file = e.target.files?.[0]; if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setRifleImages(prev => ({ ...prev, [editingId!]: ev.target?.result as string }));
+                          reader.readAsDataURL(file);
+                        }} />
+                    </label>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md transition-colors">
@@ -284,13 +353,20 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                     })()}
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  {rifleImages[rifle.id] && (
+                    <img src={rifleImages[rifle.id]} alt="Rifle"
+                      style={{ width: '72px', height: 'auto' }}
+                      className="object-contain rounded border border-slate-700 bg-slate-950 block" />
+                  )}
+                  <div className="flex items-center gap-1">
 <Button size="sm" variant="ghost" onClick={() => startEdit(rifle)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
                     <Edit className="w-4 h-4" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => deleteRifle(rifle.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0">
                     <Trash2 className="w-4 h-4" />
                   </Button>
+                  </div>
                 </div>
               </div>
             )}

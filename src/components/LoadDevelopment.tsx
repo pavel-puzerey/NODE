@@ -4,7 +4,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Textarea } from '../components/ui/textarea';
-import { Plus, Edit, Trash2, Save, X, Beaker, Package, Zap, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Beaker, Package, Zap, Copy, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { Load } from '../types';
 import { generateId } from '../utils/id';
 
@@ -131,6 +131,8 @@ interface LoadDevelopmentProps {
 
 export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [showFavorites, setShowFavorites] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Load>>({});
@@ -205,6 +207,14 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
     }
   };
 
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   const copyLoad = (load: Load) => {
     const copied: Load = {
       ...load,
@@ -220,13 +230,11 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Load Recipes</h2>
-        <Button 
-          onClick={() => setIsAdding(!isAdding)} 
-          className="bg-amber-600 hover:bg-amber-500 text-white"
-        >
-          {isAdding ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          {isAdding ? 'Cancel' : 'New Load'}
-        </Button>
+        {!isAdding && loads.length > 0 && (
+          <button onClick={() => setIsAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors">
+            <Plus className="w-3.5 h-3.5" />New Load
+          </button>
+        )}
       </div>
 
       {isAdding && (
@@ -243,6 +251,41 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Favorites section */}
+      {favorites.size > 0 && (
+        <div className="border border-amber-900/40 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowFavorites(f => !f)}
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-amber-900/10 hover:bg-amber-900/20 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-400" style={{ fill: 'currentColor' }} />
+              <span className="text-sm font-semibold text-amber-400">Favorites</span>
+              <span className="text-xs text-amber-600">{favorites.size} {favorites.size === 1 ? 'recipe' : 'recipes'}</span>
+            </div>
+            {showFavorites ? <ChevronUp className="w-4 h-4 text-amber-600" /> : <ChevronDown className="w-4 h-4 text-amber-600" />}
+          </button>
+          {showFavorites && (
+            <div className="divide-y divide-slate-800">
+              {loads.filter(l => favorites.has(l.id)).map(load => (
+                <div key={load.id} className="flex items-center justify-between px-4 py-2.5 bg-slate-900 hover:bg-slate-800 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-amber-400 font-mono border border-amber-900/50 px-2 py-0.5 rounded">{load.charge}gr</span>
+                    <div>
+                      <span className="text-sm text-white">{load.bulletId}</span>
+                      {load.powderId && <span className="text-xs text-slate-500 ml-2">{load.powderId}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => toggleFavorite(load.id)} className="text-amber-400 hover:text-slate-500 transition-colors p-1">
+                    <Star className="w-3.5 h-3.5" style={{ fill: 'currentColor' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="space-y-2">
@@ -293,6 +336,12 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="ghost" onClick={() => toggleFavorite(load.id)}
+                      className={`h-8 w-8 p-0 ${favorites.has(load.id) ? 'text-amber-400 hover:text-amber-300' : 'text-slate-600 hover:text-amber-400'} hover:bg-slate-700`}
+                      title={favorites.has(load.id) ? 'Remove from favorites' : 'Mark as favorite'}
+                    >
+                      <Star className="w-4 h-4" style={{ fill: favorites.has(load.id) ? 'currentColor' : 'none' }} />
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => copyLoad(load)} className="text-slate-400 hover:text-amber-400 hover:bg-slate-700 h-8 w-8 p-0" title="Duplicate recipe">
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -347,10 +396,13 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
       </div>
 
       {loads.length === 0 && !isAdding && (
-        <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
-          <Beaker className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-lg font-medium">No load recipes found</p>
-          <p className="text-sm">Document your load development here.</p>
+        <div
+          onClick={() => setIsAdding(true)}
+          className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
+        >
+          <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium text-slate-400">Add your first load recipe</p>
+          <p className="text-sm">Click to start documenting your loads.</p>
         </div>
       )}
     </div>

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Plus, Minus, Printer, Crosshair } from 'lucide-react';
+import { Plus, Minus, Printer, Crosshair, X } from 'lucide-react';
 import { Rifle } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
@@ -121,15 +121,31 @@ export function Dope({ rifles }: DopeProps) {
     updateCard({ ...selectedCard, windSpeeds: newSpeeds });
   };
 
+  const addCustomDistance = () => {
+    if (!selectedCard || !customDistInput) return;
+    const dist = parseInt(customDistInput);
+    if (isNaN(dist) || dist <= 0 || dist > 3000) return;
+    if (selectedCard.rows.some(r => r.distance === dist)) return; // no duplicates
+    const newRows = [...selectedCard.rows, { distance: dist, elevation: '', windage: ['', '', '', ''] as [string,string,string,string] }]
+      .sort((a, b) => a.distance - b.distance);
+    updateCard({ ...selectedCard, rows: newRows });
+    setCustomDistInput('');
+  };
+
   const addDistance = () => {
     if (!selectedCard) return;
-    const lastDist = selectedCard.rows[selectedCard.rows.length - 1]?.distance ?? 1000;
+    const lastDist = selectedCard.rows.length > 0 ? Math.max(...selectedCard.rows.map(r => r.distance)) : 0;
     const nextDist = lastDist + 100;
     if (nextDist > 3000) return;
     updateCard({
       ...selectedCard,
       rows: [...selectedCard.rows, { distance: nextDist, elevation: '', windage: ['', '', '', ''] }],
     });
+  };
+
+  const removeDistance = (distance: number) => {
+    if (!selectedCard) return;
+    updateCard({ ...selectedCard, rows: selectedCard.rows.filter(r => r.distance !== distance) });
   };
 
   const removeLastDistance = () => {
@@ -272,6 +288,7 @@ export function Dope({ rifles }: DopeProps) {
     setTimeout(() => { win.print(); }, 300);
   };
 
+  const [customDistInput, setCustomDistInput] = useState('');
   const maxDistance = selectedCard?.rows[selectedCard.rows.length - 1]?.distance ?? 1000;
   const selectedRifle = rifles.find(r => r.id === selectedRifleId);
 
@@ -358,9 +375,9 @@ export function Dope({ rifles }: DopeProps) {
           {/* Column headers — wind speed inputs live inline above their columns */}
           <div className="grid grid-cols-12 gap-1 px-2 pb-1 border-b border-slate-800 items-end">
             {/* Dist header */}
-            <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-widest pb-1">Distance</div>
+            <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-widest pb-1">Distance (yds)</div>
             {/* Elev header */}
-            <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-widest pb-1">Elevation</div>
+            <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-widest pb-1">Elevation ({selectedCard.unit})</div>
             {/* Wind columns — editable speed input + mph label stacked above column */}
             {selectedCard.windSpeeds.map((speed, idx) => (
               <div key={idx} className="col-span-2 flex flex-col items-center gap-0.5">
@@ -369,7 +386,7 @@ export function Dope({ rifles }: DopeProps) {
                   min={1}
                   max={99}
                   value={speed}
-                  onChange={e => handleWindSpeedChange(idx, e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleWindSpeedChange(idx, e.target.value)}
                   className="w-14 h-7 text-center text-xs font-mono font-bold bg-slate-950 border border-slate-700 rounded text-amber-400 focus:outline-none focus:border-amber-600"
                 />
                 <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">mph</span>
@@ -387,18 +404,25 @@ export function Dope({ rifles }: DopeProps) {
                 {/* Distance */}
                 <div className="col-span-2 flex items-center gap-1">
                   <span
-                    className="text-xs font-bold font-mono px-1.5 py-0.5 rounded border w-full text-center"
+                    className="text-xs font-bold font-mono px-1.5 py-0.5 rounded border flex-1 text-center"
                     style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.05)' }}
                   >
                     {row.distance}
                   </span>
+                  <button
+                    onClick={() => removeDistance(row.distance)}
+                    className="text-slate-700 hover:text-red-400 transition-colors flex-shrink-0"
+                    title="Remove this distance"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
 
                 {/* Elevation */}
                 <div className="col-span-2">
                   <Input
                     value={row.elevation}
-                    onChange={e => handleElevationChange(row.distance, e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleElevationChange(row.distance, e.target.value)}
                     placeholder="—"
                     className="h-8 text-sm font-mono bg-slate-950 border-slate-800 text-white focus:border-amber-600 placeholder:text-slate-700 text-center px-1"
                   />
@@ -409,7 +433,7 @@ export function Dope({ rifles }: DopeProps) {
                   <div key={idx} className="col-span-2">
                     <Input
                       value={row.windage[idx]}
-                      onChange={e => handleWindageChange(row.distance, idx, e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleWindageChange(row.distance, idx, e.target.value)}
                       placeholder="—"
                       className="h-8 text-sm font-mono bg-slate-950 border-slate-800 text-sky-300 focus:border-sky-600 placeholder:text-slate-700 text-center px-1"
                     />
@@ -420,19 +444,41 @@ export function Dope({ rifles }: DopeProps) {
           </div>
 
           {/* Add / remove distance buttons */}
-          <div className="flex items-center gap-3 pt-2 px-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2 px-2">
+            {/* Custom distance input */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                max={3000}
+                value={customDistInput}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomDistInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addCustomDistance(); }}
+                placeholder="Custom yd"
+                className="w-24 h-8 text-xs font-mono text-center bg-slate-950 border border-slate-700 rounded px-2 text-white placeholder-slate-600 focus:outline-none focus:border-amber-600"
+              />
+              <button
+                onClick={addCustomDistance}
+                disabled={!customDistInput || parseInt(customDistInput) <= 0 || parseInt(customDistInput) > 3000}
+                className="flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />Add
+              </button>
+            </div>
+            {/* +100yd quick button */}
             <button
               onClick={addDistance}
               disabled={maxDistance >= 3000}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-300 border border-slate-700 bg-slate-900 hover:bg-slate-800 px-2.5 py-1.5 rounded-md disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              {maxDistance < 3000 ? `+ Add ${maxDistance + 100} yd` : 'Max 3000 yd'}
+              {maxDistance < 3000 ? '100 yd' : 'Max 3000 yd'}
             </button>
+            {/* Remove last */}
             {selectedCard.rows.length > BASE_DISTANCES.length && (
               <button
                 onClick={removeLastDistance}
-                className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-400 border border-slate-700 hover:border-red-900/50 bg-slate-900 hover:bg-red-950/20 px-3 py-1.5 rounded-md transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-400 border border-slate-700 hover:border-red-900/50 bg-slate-900 hover:bg-red-950/20 px-2.5 py-1.5 rounded-md transition-colors"
               >
                 <Minus className="w-3.5 h-3.5" />
                 Remove {maxDistance} yd

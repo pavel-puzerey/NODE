@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -98,7 +98,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
     'Headspace Comparator',
     'Bullet Comparator',
     'Bullet Puller',
-    'Expander Mandrel Die',
+    'Expander Mandrel Die' as any,
   ];
 
   return (
@@ -107,7 +107,11 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
         <div>
           <h2 className="text-2xl font-bold text-white">Reloading Gear</h2>
         </div>
-
+        {!isAdding && gear.length > 0 && (
+          <button onClick={() => setIsAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors">
+            <Plus className="w-3.5 h-3.5" />Add Gear
+          </button>
+        )}
       </div>
 
       {isAdding && (
@@ -126,7 +130,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                   <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-700">
+                  <SelectContent className="bg-slate-900 border-slate-700" position="popper" sideOffset={4} style={{ maxHeight: "300px", overflowY: "auto" }}>
                     {gearTypes.map(type => (
                       <SelectItem key={type} value={type} className="text-white">{type}</SelectItem>
                     ))}
@@ -137,18 +141,18 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                 <Label className="text-slate-300">Brand</Label>
                 <Input 
                   value={formData.brand} 
-                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, brand: e.target.value })}
                   className="bg-slate-900 border-slate-700 text-white"
-                  placeholder="e.g., Hornady"
+                  placeholder={({'Bullet':'e.g., Hornady','Case':'e.g., Lapua','Powder':'e.g., Hodgdon','Primer':'e.g., CCI','Reloading Press':'e.g., Redding','Sizing Die':'e.g., Redding','Seating Die':'e.g., Redding','Scale':'e.g., RCBS','Trickler':'e.g., AutoTrickler','Annealer':'e.g., Annealeez','Primer Tool':'e.g., CPS','Case Cleaning System':'e.g., Frankford Arsenal','Case Trimmer':'e.g., Giraud','Headspace Comparator':'e.g., Hornady','Bullet Comparator':'e.g., Hornady','Bullet Puller':'e.g., RCBS','Expander Mandrel Die':'e.g., 21st Century'} as Record<string,string>)[formData.gearType||'']||'Brand'}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Model</Label>
                 <Input 
                   value={formData.model} 
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, model: e.target.value })}
                   className="bg-slate-900 border-slate-700 text-white"
-                  placeholder="e.g., ELD-M"
+                  placeholder={({'Bullet':'e.g., ELD-M 140gr','Case':'e.g., 6.5 Creedmoor','Powder':'e.g., H4350','Primer':'e.g., BR4','Reloading Press':'e.g., T-7 Turret','Sizing Die':'e.g., Body Die 6.5 CM','Seating Die':'e.g., Competition Seating Die','Scale':'e.g., ChargeMaster Lite','Trickler':'e.g., V4','Annealer':'e.g., Model 2','Primer Tool':'e.g., Hand Primer','Case Cleaning System':'e.g., Platinum Tumbler','Case Trimmer':'e.g., Power Trimmer','Headspace Comparator':'e.g., LNL Comparator','Bullet Comparator':'e.g., LNL Insert Set','Bullet Puller':'e.g., Collet Puller','Expander Mandrel Die':'e.g., 6.5mm Mandrel'} as Record<string,string>)[formData.gearType||'']||'Model'}
                 />
               </div>
               {formData.gearType === 'Bullet' && (
@@ -158,7 +162,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                     type="number" 
                     step="0.1"
                     value={formData.weight || ''} 
-                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
                     className="bg-slate-900 border-slate-700 text-white"
                   />
                 </div>
@@ -170,7 +174,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                     type="number" 
                     step="0.1"
                     value={formData.weight || ''} 
-                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
                     className="bg-slate-900 border-slate-700 text-white"
                   />
                 </div>
@@ -182,7 +186,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                     type="number" 
                     step="0.001"
                     value={formData.diameter || ''} 
-                    onChange={(e) => setFormData({ ...formData, diameter: parseFloat(e.target.value) })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, diameter: parseFloat(e.target.value) })}
                     className="bg-slate-900 border-slate-700 text-white"
                   />
                 </div>
@@ -192,12 +196,12 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                   <Label className="text-slate-300">Size</Label>
                   <Select 
                     value={formData.primerSize} 
-                    onValueChange={(value) => setFormData({ ...formData, primerSize: value })}
+                    onValueChange={(value: string) => setFormData({ ...formData, primerSize: value })}
                   >
                     <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-700">
+                    <SelectContent className="bg-slate-900 border-slate-700" position="popper" sideOffset={4} style={{ maxHeight: "300px", overflowY: "auto" }}>
                       <SelectItem value="Small Rifle" className="text-white">Small Rifle</SelectItem>
                       <SelectItem value="Small Rifle Magnum" className="text-white">Small Rifle Magnum</SelectItem>
                       <SelectItem value="Large Rifle" className="text-white">Large Rifle</SelectItem>
@@ -212,7 +216,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                 <Label className="text-slate-300">Lot Number</Label>
                 <Input 
                   value={formData.lot || ''} 
-                  onChange={(e) => setFormData({ ...formData, lot: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, lot: e.target.value })}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g., LOT-12345"
                 />
@@ -221,7 +225,7 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
                 <Label className="text-slate-300">Notes</Label>
                 <Input 
                   value={formData.notes || ''} 
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, notes: e.target.value })}
                   className="bg-slate-900 border-slate-700 text-white"
                 />
               </div>
@@ -239,72 +243,27 @@ export function ReloadingGear({ gear, setGear }: ReloadingGearProps) {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-2">
         {gear.map((item) => (
-          <Card key={item.id} className="bg-slate-900 border-slate-800 card-tactical">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between mb-2">
-                <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded">
-                  {item.gearType}
-                </span>
-                <div className="flex gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleEdit(item)}
-                    className="text-slate-400 hover:text-white hover:bg-slate-700"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleDelete(item.id)}
-                    className="text-slate-400 hover:text-red-400 hover:bg-slate-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+          <div key={item.id} className="w-full flex items-center justify-between p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[130px] text-center flex-shrink-0">{item.gearType}</span>
+              <div className="min-w-0">
+                <div className="font-medium text-white text-sm">{item.brand} {item.model}</div>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+                  {item.weight && <span className="text-xs"><span className="text-slate-600">Weight: </span><span className="text-slate-400">{item.weight} {item.gearType === 'Powder' ? 'lbs' : 'gr'}</span></span>}
+                  {item.diameter && <span className="text-xs"><span className="text-slate-600">Diameter: </span><span className="text-slate-400">{item.diameter}"</span></span>}
+                  {item.primerSize && <span className="text-xs"><span className="text-slate-600">Size: </span><span className="text-slate-400">{item.primerSize}</span></span>}
+                  {item.lot && <span className="text-xs"><span className="text-slate-600">Lot #: </span><span className="text-slate-400">{item.lot}</span></span>}
+                  {item.notes && <span className="text-xs"><span className="text-slate-600">Notes: </span><span className="text-slate-400">{item.notes}</span></span>}
                 </div>
               </div>
-              <div>
-                <CardTitle className="text-white text-lg">{item.brand}</CardTitle>
-                <CardDescription className="text-slate-400">{item.model}</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                {item.weight && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Weight</span>
-                    <span className="text-white font-medium">{item.weight} {item.gearType === 'Powder' ? 'lbs' : 'gr'}</span>
-                  </div>
-                )}
-                {item.diameter && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Diameter</span>
-                    <span className="text-white font-medium">{item.diameter}"</span>
-                  </div>
-                )}
-                {item.lot && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Lot #</span>
-                    <span className="text-white font-medium">{item.lot}</span>
-                  </div>
-                )}
-                {item.primerSize && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Size</span>
-                    <span className="text-white font-medium">{item.primerSize}</span>
-                  </div>
-                )}
-                {item.notes && (
-                  <div className="pt-2 border-t border-slate-700">
-                    <p className="text-xs text-slate-500">{item.notes}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8"><Edit className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)} className="text-slate-400 hover:text-red-400 hover:bg-slate-700 h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          </div>
         ))}
       </div>
 
