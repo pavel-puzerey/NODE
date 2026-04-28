@@ -99,6 +99,7 @@ export function AuthScreen() {
                   onChange={e => setUsername(e.target.value)}
                   className="bg-slate-950 border-slate-700 text-white"
                   placeholder="e.g. Pavel"
+                  autoComplete="off"
                 />
               </div>
             )}
@@ -111,6 +112,7 @@ export function AuthScreen() {
                 onChange={e => setEmail(e.target.value)}
                 className="bg-slate-950 border-slate-700 text-white"
                 placeholder="you@example.com"
+                autoComplete="off"
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
             </div>
@@ -125,6 +127,7 @@ export function AuthScreen() {
                     onChange={e => setPassword(e.target.value)}
                     className="bg-slate-950 border-slate-700 text-white pr-10"
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                   />
                   <button
