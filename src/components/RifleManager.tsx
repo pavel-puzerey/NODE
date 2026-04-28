@@ -12,87 +12,107 @@ interface RifleFieldsProps {
   onChange: (field: keyof Rifle, value: string | number) => void;
 }
 
-// Moved outside to prevent re-creation on every keystroke
-const RifleFields = ({ data, onChange }: RifleFieldsProps) => (
+// Shared fields for both rifle types
+const SharedFields = ({ data, onChange }: RifleFieldsProps) => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Caliber</Label>
-      <Input 
-        value={data.caliber || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('caliber', e.target.value)}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="6.5 Creedmoor" 
-      />
+      <Input value={data.caliber || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('caliber', e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder="6.5 Creedmoor" />
     </div>
     <div className="space-y-1">
-      <Label className="text-slate-400 text-xs">Action</Label>
-      <Input 
-        value={data.action || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('action', e.target.value)}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="Zermatt Origin" 
-      />
+      <Label className="text-slate-400 text-xs">Action / Model</Label>
+      <Input value={data.action || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('action', e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder={(data as any).rifleType === 'gas' ? 'CMMG Resolute' : 'Zermatt Origin'} />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Barrel Brand</Label>
-      <Input 
-        value={data.barrelBrand || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelBrand', e.target.value)}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="Bartlein" 
-      />
+      <Input value={data.barrelBrand || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelBrand', e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder="Bartlein" />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Barrel Length (in)</Label>
-      <Input 
-        type="number"
-        value={data.barrelLength || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelLength', parseFloat(e.target.value))}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="26" 
-      />
+      <Input type="number" value={data.barrelLength || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelLength', parseFloat(e.target.value))} className="bg-slate-950 border-slate-700 text-white" placeholder="20" />
     </div>
     <div className="space-y-1">
-      <Label className="text-slate-400 text-xs">Chassis/Stock</Label>
-      <Input 
-        value={data.chassis || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('chassis', e.target.value)}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="MDT ACC Elite" 
-      />
+      <Label className="text-slate-400 text-xs">Chassis / Stock</Label>
+      <Input value={data.chassis || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('chassis', e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder={(data as any).rifleType === 'gas' ? 'Magpul PRS' : 'MDT ACC Elite'} />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Trigger</Label>
-      <Input 
-        value={data.trigger || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('trigger', e.target.value)}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="TriggerTech Diamond" 
-      />
+      <Input value={data.trigger || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('trigger', e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder={(data as any).rifleType === 'gas' ? 'Geissele SSA-E' : 'TriggerTech Diamond'} />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Trigger Weight (lbs)</Label>
-      <Input 
-        type="number"
-        step="0.1"
-        value={(data as any).triggerWeightLbs || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('triggerWeightLbs' as any, parseFloat(e.target.value))}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="2.5" 
-      />
+      <Input type="number" step="0.1" value={(data as any).triggerWeightLbs || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('triggerWeightLbs' as any, parseFloat(e.target.value))} className="bg-slate-950 border-slate-700 text-white" placeholder="2.5" />
     </div>
     <div className="space-y-1">
       <Label className="text-slate-400 text-xs">Barrel Life Warning (rounds)</Label>
-      <Input 
-        type="number"
-        value={(data as any).barrelLifeRounds || ''} 
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelLifeRounds' as any, parseInt(e.target.value))}
-        className="bg-slate-950 border-slate-700 text-white" 
-        placeholder="e.g. 2500" 
-      />
+      <Input type="number" value={(data as any).barrelLifeRounds || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('barrelLifeRounds' as any, parseInt(e.target.value))} className="bg-slate-950 border-slate-700 text-white" placeholder="e.g. 2500" />
     </div>
   </div>
 );
+
+// Gas-operated specific fields
+const GasFields = ({ data, onChange }: RifleFieldsProps) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Gas System Length</Label>
+      <select
+        value={(data as any).gasSystemLength || ''}
+        onChange={(e) => onChange('gasSystemLength' as any, e.target.value)}
+        className="w-full h-9 rounded-md bg-slate-950 border border-slate-700 text-white text-sm px-3 focus:outline-none focus:border-amber-600"
+      >
+        <option value="">Select…</option>
+        <option value="Pistol">Pistol</option>
+        <option value="Carbine">Carbine</option>
+        <option value="Mid-length">Mid-length</option>
+        <option value="Rifle">Rifle</option>
+      </select>
+    </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Gas Block Type</Label>
+      <select
+        value={(data as any).gasBlockType || ''}
+        onChange={(e) => onChange('gasBlockType' as any, e.target.value)}
+        className="w-full h-9 rounded-md bg-slate-950 border border-slate-700 text-white text-sm px-3 focus:outline-none focus:border-amber-600"
+      >
+        <option value="">Select…</option>
+        <option value="Low-profile">Low-profile</option>
+        <option value="Standard">Standard</option>
+        <option value="Adjustable">Adjustable</option>
+      </select>
+    </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">BCG Type</Label>
+      <Input value={(data as any).bcgType || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('bcgType' as any, e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder="e.g. BCM Enhanced, Nickel Boron" />
+    </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Buffer Type</Label>
+      <select
+        value={(data as any).bufferType || ''}
+        onChange={(e) => onChange('bufferType' as any, e.target.value)}
+        className="w-full h-9 rounded-md bg-slate-950 border border-slate-700 text-white text-sm px-3 focus:outline-none focus:border-amber-600"
+      >
+        <option value="">Select…</option>
+        <option value="Carbine">Carbine</option>
+        <option value="H">H</option>
+        <option value="H2">H2</option>
+        <option value="H3">H3</option>
+        <option value="Rifle">Rifle</option>
+        <option value="LUTH-AR MBA">LUTH-AR MBA</option>
+      </select>
+    </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Buffer Spring</Label>
+      <Input value={(data as any).bufferSpring || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('bufferSpring' as any, e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder="e.g. Sprinco Silver" />
+    </div>
+    <div className="space-y-1">
+      <Label className="text-slate-400 text-xs">Handguard</Label>
+      <Input value={(data as any).handguard || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('handguard' as any, e.target.value)} className="bg-slate-950 border-slate-700 text-white" placeholder="e.g. Midwest Industries 15in M-LOK" />
+    </div>
+  </div>
+);
+
+// Alias for backward compatibility
+const RifleFields = SharedFields;
 
 interface RifleManagerProps {
   rifles: Rifle[];
@@ -102,6 +122,7 @@ interface RifleManagerProps {
 
 export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [rifleTypeFilter, setRifleTypeFilter] = useState<'bolt' | 'gas'>('bolt');
   const [rifleImages, setRifleImages] = useState<Record<string, string>>({});
   const [newRifleImage, setNewRifleImage] = useState<string>('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -130,8 +151,9 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
       barrelLength: newRifle.barrelLength || 0,
       chassis: newRifle.chassis || '',
       trigger: newRifle.trigger || '',
+      rifleType: rifleTypeFilter,
       createdAt: new Date().toISOString(),
-    };
+    } as any;
 
     if (newRifleImage) setRifleImages(prev => ({ ...prev, [rifle.id]: newRifleImage }));
     setRifles([...rifles, rifle]);
@@ -180,7 +202,19 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Rifle Inventory</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold text-white">Rifle Inventory</h2>
+          <div className="flex gap-1 bg-slate-900 border border-slate-700 rounded-md p-1">
+            {(['bolt', 'gas'] as const).map(t => (
+              <button key={t} onClick={() => setRifleTypeFilter(t)}
+                className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-widest transition-colors ${rifleTypeFilter === t ? 'text-slate-900' : 'text-slate-500 hover:text-white'}`}
+                style={rifleTypeFilter === t ? { backgroundColor: '#f59e0b' } : {}}
+              >
+                {t === 'bolt' ? 'Bolt Action' : 'Gas-Operated'}
+              </button>
+            ))}
+          </div>
+        </div>
         {!isAdding && rifles.length > 0 && (
           <button onClick={() => setIsAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors">
             <Plus className="w-3.5 h-3.5" />Add Rifle
@@ -194,7 +228,13 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
             <CardTitle className="text-white">Add New Rifle</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RifleFields data={newRifle} onChange={(field, value) => setNewRifle({ ...newRifle, [field]: value })} />
+            <SharedFields data={{ ...newRifle, rifleType: rifleTypeFilter } as any} onChange={(field, value) => setNewRifle({ ...newRifle, [field]: value, rifleType: rifleTypeFilter } as any)} />
+            {rifleTypeFilter === 'gas' && (
+              <div className="border-t border-slate-800 pt-3">
+                <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Gas System</p>
+                <GasFields data={{ ...newRifle, rifleType: rifleTypeFilter } as any} onChange={(field, value) => setNewRifle({ ...newRifle, [field]: value } as any)} />
+              </div>
+            )}
             <div className="pt-2 border-t border-slate-800">
               {newRifleImage ? (
                 <div className="relative group/img inline-block" style={{ width: '25%' }}>
@@ -235,7 +275,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
       )}
 
       <div className="space-y-2">
-        {rifles.map((rifle) => (
+        {rifles.filter(r => ((r as any).rifleType || 'bolt') === rifleTypeFilter).map((rifle) => (
           <div key={rifle.id}>
             {editingId === rifle.id ? (
               <div className="p-4 bg-slate-900 border border-slate-700 rounded-md space-y-4">
@@ -250,7 +290,13 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                     </Button>
                   </div>
                 </div>
-                <RifleFields data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
+                <SharedFields data={editForm as any} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
+                {((editForm as any).rifleType === 'gas') && (
+                  <div className="border-t border-slate-800 pt-3">
+                    <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Gas System</p>
+                    <GasFields data={editForm as any} onChange={(field, value) => setEditForm({ ...editForm, [field]: value } as any)} />
+                  </div>
+                )}
                 <div className="pt-2 border-t border-slate-800">
                   {rifleImages[editingId!] ? (
                     <div className="relative group/img inline-block" style={{ width: '25%' }}>
@@ -289,7 +335,10 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                     {rifle.caliber}
                   </span>
                   <div>
+                    <div className="flex items-center gap-2">
                     <div className="font-medium text-white text-sm">{rifle.action}</div>
+                    <span className="text-[10px] text-slate-600 uppercase tracking-widest">{((rifle as any).rifleType || 'bolt') === 'gas' ? 'Gas' : 'Bolt'}</span>
+                  </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
                       {rifle.barrelBrand && (
                         <span className="text-xs">
@@ -320,6 +369,15 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                           <span className="text-slate-600">Trigger Weight: </span>
                           <span className="text-slate-400">{(rifle as any).triggerWeightLbs} lbs</span>
                         </span>
+                      )}
+                      {(rifle as any).gasSystemLength && (
+                        <span className="text-xs"><span className="text-slate-600">Gas: </span><span className="text-slate-400">{(rifle as any).gasSystemLength}</span></span>
+                      )}
+                      {(rifle as any).bufferType && (
+                        <span className="text-xs"><span className="text-slate-600">Buffer: </span><span className="text-slate-400">{(rifle as any).bufferType}</span></span>
+                      )}
+                      {(rifle as any).handguard && (
+                        <span className="text-xs"><span className="text-slate-600">Handguard: </span><span className="text-slate-400">{(rifle as any).handguard}</span></span>
                       )}
                     </div>
                     {/* Round count */}
@@ -381,7 +439,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
           className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors"
         >
           <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-lg font-medium text-slate-400">Add your first rifle</p>
+          <p className="text-lg font-medium text-slate-400">Add your first {rifleTypeFilter === 'gas' ? 'gas-operated' : 'bolt action'} rifle</p>
           <p className="text-sm">Click to start tracking data.</p>
         </div>
       )}

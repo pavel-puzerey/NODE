@@ -21,7 +21,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [reticleUploadId, setReticleUploadId] = useState<string | null>(null);
 
   // Form State
-  const [type, setType] = useState<'rifle-scope' | 'spotting-scope' | 'binoculars' | 'rangefinder'>('rifle-scope');
+  const [type, setType] = useState<string>('rifle-scope');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [magnification, setMagnification] = useState('');
@@ -54,6 +54,8 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       case 'spotting-scope': return <Search className="w-4 h-4 text-amber-400" />;
       case 'binoculars': return <Glasses className="w-4 h-4 text-amber-400" />;
       case 'rangefinder': return <Ruler className="w-4 h-4 text-amber-400" />;
+      case 'red-dot': return <Crosshair className="w-4 h-4 text-amber-400" />;
+      case 'prism-scope': return <Crosshair className="w-4 h-4 text-amber-400" />;
       default: return <Eye className="w-4 h-4 text-amber-400" />;
     }
   };
@@ -64,6 +66,8 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       case 'spotting-scope': return 'Spotting Scope';
       case 'binoculars': return 'Binoculars';
       case 'rangefinder': return 'Rangefinder';
+      case 'red-dot': return 'Red Dot';
+      case 'prism-scope': return 'Prism Scope';
       default: return 'Glass';
     }
   };
@@ -71,15 +75,15 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const handleAdd = () => {
     if (!brand || !model) return;
 
-    const item: Glass = {
+    const item: any = {
       id: editingId || generateId(),
       userId: 'user-1',
       type,
       brand,
       model,
-      magnification: type === 'rifle-scope' ? magnification : undefined,
-      reticle: type === 'rifle-scope' ? reticle : undefined,
-      tubeSize: type === 'rifle-scope' ? tubeSize : undefined,
+      magnification: (type === 'rifle-scope' || type === 'prism-scope') ? magnification : undefined,
+      reticle: (type === 'rifle-scope' || type === 'red-dot' || type === 'prism-scope') ? reticle : undefined,
+      tubeSize: (type === 'rifle-scope' || type === 'red-dot' || type === 'prism-scope') ? tubeSize : undefined,
       turretType: type === 'rifle-scope' ? turretType : undefined,
       objectiveLens: type === 'spotting-scope' ? objectiveLens : undefined,
       eyepiece: type === 'spotting-scope' ? eyepiece : undefined,
@@ -124,7 +128,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     setAngleComp(item.angleComp || false);
     setBallisticCalc(item.ballisticCalc || false);
     setNotes(item.notes || '');
-    setReticleImage(item.reticleImage || null);
+    setReticleImage((item as any)?.reticleImage || null);
     setIsAdding(true);
     setExpandedId(null);
   };
@@ -192,6 +196,8 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   <SelectItem value="spotting-scope">Spotting Scope</SelectItem>
                   <SelectItem value="binoculars">Binoculars</SelectItem>
                   <SelectItem value="rangefinder">Rangefinder</SelectItem>
+                  <SelectItem value="red-dot">Red Dot</SelectItem>
+                  <SelectItem value="prism-scope">Prism Scope</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -200,9 +206,9 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
               <Label className="text-slate-300">Brand</Label>
               <Input
                 value={brand}
-                onChange={(e) => setBrand(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setBrand(e.target.value)}
                 className="bg-slate-900 border-slate-700 text-white"
-                placeholder={({'rifle-scope':'e.g. Vortex','spotting-scope':'e.g. Swarovski','binoculars':'e.g. Leica','rangefinder':'e.g. Leica'} as Record<string,string>)[type] || 'Brand'}
+                placeholder={({'rifle-scope':'e.g. Vortex','spotting-scope':'e.g. Swarovski','binoculars':'e.g. Leica','rangefinder':'e.g. Leica','red-dot':'e.g. Aimpoint','prism-scope':'e.g. Trijicon'} as Record<string,string>)[type] || 'Brand'}
               />
             </div>
 
@@ -210,9 +216,9 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
               <Label className="text-slate-300">Model</Label>
               <Input
                 value={model}
-                onChange={(e) => setModel(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setModel(e.target.value)}
                 className="bg-slate-900 border-slate-700 text-white"
-                placeholder={({'rifle-scope':'e.g. PST Gen II 5-25x50','spotting-scope':'e.g. ATX 85','binoculars':'e.g. Noctivid 10x42','rangefinder':'e.g. Rangemaster CRF 3500.COM'} as Record<string,string>)[type] || 'Model'}
+                placeholder={({'rifle-scope':'e.g. PST Gen II 5-25x50','spotting-scope':'e.g. ATX 85','binoculars':'e.g. Noctivid 10x42','rangefinder':'e.g. Rangemaster CRF 3500.COM','red-dot':'e.g. CompM5','prism-scope':'e.g. ACOG 4x32'} as Record<string,string>)[type] || 'Model'}
               />
             </div>
           </div>
@@ -224,7 +230,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Magnification</Label>
                 <Input
                   value={magnification}
-                  onChange={(e) => setMagnification(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMagnification(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 5-25x"
                 />
@@ -233,7 +239,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Reticle</Label>
                 <Input
                   value={reticle}
-                  onChange={(e) => setReticle(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setReticle(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. EBR-2C"
                 />
@@ -246,7 +252,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                     <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-lg">
                       <Camera className="w-5 h-5 text-white mr-1" />
                       <span className="text-white text-xs">Change</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                      <input type="file" accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         const reader = new FileReader();
@@ -259,7 +265,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   <label className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-amber-600 transition-colors text-slate-500 hover:text-amber-500 text-xs bg-slate-950">
                     <Camera className="w-4 h-4" />
                     Upload reticle image
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    <input type="file" accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       const reader = new FileReader();
@@ -273,7 +279,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Tube Size</Label>
                 <Input
                   value={tubeSize}
-                  onChange={(e) => setTubeSize(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setTubeSize(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 30mm"
                 />
@@ -282,7 +288,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Turret Type</Label>
                 <Input
                   value={turretType}
-                  onChange={(e) => setTurretType(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setTurretType(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. Zero Stop"
                 />
@@ -296,7 +302,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Objective Lens</Label>
                 <Input
                   value={objectiveLens}
-                  onChange={(e) => setObjectiveLens(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setObjectiveLens(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 60mm"
                 />
@@ -305,7 +311,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Eyepiece</Label>
                 <Input
                   value={eyepiece}
-                  onChange={(e) => setEyepiece(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setEyepiece(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 20-60x"
                 />
@@ -315,7 +321,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   type="checkbox"
                   id="hasReticle"
                   checked={hasReticle}
-                  onChange={(e) => setHasReticle(e.target.checked)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHasReticle(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-emerald-600"
                 />
                 <Label htmlFor="hasReticle" className="text-slate-300">Has Reticle</Label>
@@ -329,7 +335,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Magnification × Objective (mm)</Label>
                 <Input
                   value={binoMagnification}
-                  onChange={(e) => setBinoMagnification(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setBinoMagnification(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 10x42"
                 />
@@ -350,7 +356,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Field of View</Label>
                 <Input
                   value={fieldOfView}
-                  onChange={(e) => setFieldOfView(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setFieldOfView(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 369ft @ 1000yds"
                 />
@@ -359,7 +365,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Weight</Label>
                 <Input
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setWeight(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 28 oz"
                 />
@@ -373,7 +379,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                 <Label className="text-slate-300">Max Range</Label>
                 <Input
                   value={maxRange}
-                  onChange={(e) => setMaxRange(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMaxRange(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
                   placeholder="e.g. 2000 yards"
                 />
@@ -383,7 +389,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   type="checkbox"
                   id="angleComp"
                   checked={angleComp}
-                  onChange={(e) => setAngleComp(e.target.checked)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAngleComp(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-emerald-600"
                 />
                 <Label htmlFor="angleComp" className="text-slate-300">Angle Compensation</Label>
@@ -393,7 +399,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   type="checkbox"
                   id="ballisticCalc"
                   checked={ballisticCalc}
-                  onChange={(e) => setBallisticCalc(e.target.checked)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBallisticCalc(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-emerald-600"
                 />
                 <Label htmlFor="ballisticCalc" className="text-slate-300">Ballistic Calculator</Label>
@@ -405,7 +411,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
             <Label className="text-slate-300">Notes</Label>
             <Input
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setNotes(e.target.value)}
               className="bg-slate-900 border-slate-700 text-white"
               placeholder="Additional notes..."
             />
@@ -458,7 +464,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       startEdit(item);
                     }}
@@ -469,7 +475,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       handleDelete(item.id);
                     }}
@@ -517,18 +523,18 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                             <span className="text-white">{item.reticle}</span>
                           </div>
                         )}
-                        {item.reticleImage && (
+                        {(item as any).reticleImage && (
                           <div className="col-span-2 md:col-span-4 mt-2">
                             <span className="text-slate-500 block text-xs mb-1">Reticle Image</span>
                             <img
-                              src={item.reticleImage}
+                              src={(item as any).reticleImage}
                               alt="Reticle"
                               className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950 block pointer-events-none"
                             />
                             <div className="mt-1 flex items-center justify-between">
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); setZoomedImage(item.reticleImage!); }}
+                                onClick={(e) => { e.stopPropagation(); setZoomedImage((item as any).reticleImage!); }}
                                 className="text-xs text-amber-500 hover:text-amber-400 transition-colors"
                               >
                                 🔍 View enlarged
@@ -652,7 +658,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => {
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
           const file = e.target.files?.[0];
           if (!file || !reticleUploadId) return;
           const reader = new FileReader();
