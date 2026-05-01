@@ -131,6 +131,7 @@ interface LoadDevelopmentProps {
 
 export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [expandedBullets, setExpandedBullets] = useState<Set<string>>(new Set());
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showFavorites, setShowFavorites] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -220,7 +221,7 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
       ...load,
       id: generateId(),
       charge: load.charge,
-      notes: load.notes ? `Copy of: ${load.notes}` : 'Copy',
+      notes: load.notes || undefined,
       createdAt: new Date().toISOString(),
     };
     setLoads([...loads, copied]);
@@ -245,6 +246,7 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
           <CardContent className="space-y-4">
             <LoadForm data={newLoad} onChange={(field, value) => setNewLoad({ ...newLoad, [field]: value })} />
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
+              <Button onClick={() => setIsAdding(false)} variant="outline" className="border-slate-600 text-slate-400 hover:text-white hover:bg-slate-800">Cancel</Button>
               <Button onClick={handleAdd} className="bg-amber-600 hover:bg-amber-700 text-white">
                 <Save className="w-4 h-4 mr-2" />Save Recipe
               </Button>
@@ -288,111 +290,84 @@ export function LoadDevelopment({ loads, setLoads }: LoadDevelopmentProps) {
         </div>
       )}
 
-      <div className="space-y-2">
-        {loads.map((load) => (
-          <div key={load.id}>
-            {editingId === load.id ? (
-              <div className="p-4 bg-slate-900 border border-slate-700 rounded-md space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Editing Recipe</span>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={cancelEdit} className="text-slate-400 hover:text-white p-1 h-8 w-8">
-                      <X className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" onClick={saveEdit} className="bg-amber-600 hover:bg-amber-700 p-1 h-8 w-8">
-                      <Save className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                <LoadForm data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
-              </div>
-            ) : (
-              <div className="bg-slate-900 border border-slate-800 rounded-md overflow-hidden">
-                {/* Clickable summary row */}
-                <div
-                  className="w-full flex items-center justify-between p-3 hover:bg-slate-800 transition-colors cursor-pointer"
-                  onClick={() => setExpandedId(expandedId === load.id ? null : load.id)}
+      <div className="space-y-3">
+        {(() => {
+          const bulletGroups = new Map<string, Load[]>();
+          loads.forEach(load => {
+            const key = load.bulletId || 'Unknown Bullet';
+            if (!bulletGroups.has(key)) bulletGroups.set(key, []);
+            bulletGroups.get(key)!.push(load);
+          });
+          return Array.from(bulletGroups.entries()).map(([bullet, bulletLoads]) => {
+            const isOpen = expandedBullets.has(bullet);
+            return (
+              <div key={bullet} className="border border-slate-800 rounded-lg overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-900 hover:bg-slate-800 transition-colors text-left"
+                  onClick={() => setExpandedBullets(prev => { const n = new Set(prev); if (n.has(bullet)) n.delete(bullet); else n.add(bullet); return n; })}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="inline-block text-amber-400 text-xs font-bold uppercase tracking-widest border border-amber-900/50 px-2 py-0.5 rounded min-w-[60px] text-center font-mono">
-                      {load.charge}gr
-                    </span>
-                    <div>
-                      <div className="font-medium text-white text-sm">{load.bulletId}</div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
-                        {load.powderId && (
-                          <span className="text-xs">
-                            <span className="text-slate-600">Powder: </span>
-                            <span className="text-slate-400">{load.powderId}</span>
-                          </span>
-                        )}
-                        {load.caseId && (
-                          <span className="text-xs">
-                            <span className="text-slate-600">Brass: </span>
-                            <span className="text-slate-400">{load.caseId}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <span className="text-sm font-semibold text-white">{bullet}</span>
+                    <span className="text-xs text-slate-500">{bulletLoads.length} {bulletLoads.length === 1 ? 'recipe' : 'recipes'}</span>
                   </div>
-                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                    <Button size="sm" variant="ghost" onClick={() => toggleFavorite(load.id)}
-                      className={`h-8 w-8 p-0 ${favorites.has(load.id) ? 'text-amber-400 hover:text-amber-300' : 'text-slate-600 hover:text-amber-400'} hover:bg-slate-700`}
-                      title={favorites.has(load.id) ? 'Remove from favorites' : 'Mark as favorite'}
-                    >
-                      <Star className="w-4 h-4" style={{ fill: favorites.has(load.id) ? 'currentColor' : 'none' }} />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => copyLoad(load)} className="text-slate-400 hover:text-amber-400 hover:bg-slate-700 h-8 w-8 p-0" title="Duplicate recipe">
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(load)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => deleteLoad(load.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Expanded details */}
-                {expandedId === load.id && (
-                  <div className="px-4 pb-4 pt-1 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                    {load.primerId && (
-                      <div>
-                        <span className="text-slate-500 block text-xs mb-0.5">Primer</span>
-                        <span className="text-white">{load.primerId}</span>
+                  {isOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {isOpen && (
+                  <div className="divide-y divide-slate-800/50">
+                    {bulletLoads.map((load) => (
+                      <div key={load.id}>
+                        {editingId === load.id ? (
+                          <div className="p-4 bg-slate-900 border-l-2 border-amber-600 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Editing Recipe</span>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" onClick={cancelEdit} className="text-slate-400 hover:text-white p-1 h-8 w-8"><X className="w-4 h-4" /></Button>
+                                <Button size="sm" onClick={saveEdit} className="bg-amber-600 hover:bg-amber-700 p-1 h-8 w-8"><Save className="w-4 h-4" /></Button>
+                              </div>
+                            </div>
+                            <LoadForm data={editForm} onChange={(field, value) => setEditForm({ ...editForm, [field]: value })} />
+                          </div>
+                        ) : (
+                          <div className="bg-slate-950">
+                            <div className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-900 transition-colors cursor-pointer"
+                              onClick={() => setExpandedId(expandedId === load.id ? null : load.id)}>
+                              <div className="flex items-center gap-3">
+                                <span className="inline-block text-amber-400 text-xs font-bold border border-amber-900/50 px-2 py-0.5 rounded min-w-[56px] text-center font-mono">{load.charge}gr</span>
+                                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                                  {load.powderId && <span className="text-xs"><span className="text-slate-600">Powder: </span><span className="text-slate-400">{load.powderId}</span></span>}
+                                  {load.caseId && <span className="text-xs"><span className="text-slate-600">Brass: </span><span className="text-slate-400">{load.caseId}</span></span>}
+                                  {load.primerId && <span className="text-xs"><span className="text-slate-600">Primer: </span><span className="text-slate-400">{load.primerId}</span></span>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                <Button size="sm" variant="ghost" onClick={() => toggleFavorite(load.id)}
+                                  className={`h-8 w-8 p-0 ${favorites.has(load.id) ? 'text-amber-400 hover:text-amber-300' : 'text-slate-600 hover:text-amber-400'} hover:bg-slate-700`}>
+                                  <Star className="w-4 h-4" style={{ fill: favorites.has(load.id) ? 'currentColor' : 'none' }} />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => copyLoad(load)} className="text-slate-400 hover:text-amber-400 hover:bg-slate-700 h-8 w-8 p-0"><Copy className="w-4 h-4" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => startEdit(load)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0"><Edit className="w-4 h-4" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => deleteLoad(load.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0"><Trash2 className="w-4 h-4" /></Button>
+                              </div>
+                            </div>
+                            {expandedId === load.id && (
+                              <div className="px-4 pb-4 pt-1 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                {load.primerId && <div><span className="text-slate-500 block text-xs mb-0.5">Primer</span><span className="text-white">{load.primerId}</span></div>}
+                                {load.oal ? <div><span className="text-slate-500 block text-xs mb-0.5">OAL</span><span className="text-white">{load.oal}"</span></div> : null}
+                                {load.seatingDepthIn ? <div><span className="text-slate-500 block text-xs mb-0.5">Seating Depth</span><span className="text-white">{load.seatingDepthIn}"</span></div> : null}
+                                {load.neckTensionIn ? <div><span className="text-slate-500 block text-xs mb-0.5">Neck Tension</span><span className="text-white">{load.neckTensionIn}"</span></div> : null}
+                                {load.notes && <div className="col-span-2 md:col-span-4"><span className="text-slate-500 block text-xs mb-0.5">Notes</span><span className="text-slate-300 italic">{load.notes}</span></div>}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {load.oal ? (
-                      <div>
-                        <span className="text-slate-500 block text-xs mb-0.5">OAL</span>
-                        <span className="text-white">{load.oal}"</span>
-                      </div>
-                    ) : null}
-                    {load.seatingDepthIn ? (
-                      <div>
-                        <span className="text-slate-500 block text-xs mb-0.5">Seating Depth</span>
-                        <span className="text-white">{load.seatingDepthIn}"</span>
-                      </div>
-                    ) : null}
-                    {load.neckTensionIn ? (
-                      <div>
-                        <span className="text-slate-500 block text-xs mb-0.5">Neck Tension</span>
-                        <span className="text-white">{load.neckTensionIn}"</span>
-                      </div>
-                    ) : null}
-                    {load.notes && (
-                      <div className="col-span-2 md:col-span-4">
-                        <span className="text-slate-500 block text-xs mb-0.5">Notes</span>
-                        <span className="text-slate-300 italic">{load.notes}</span>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          });
+        })()}
       </div>
 
       {loads.length === 0 && !isAdding && (

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { read, utils } from 'xlsx';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { supabase } from '../lib/supabase';
 import { Plus, Trash2, Save, Target, Calculator, Thermometer, Wind, Droplets, X, Upload, Download, Calendar, ChevronDown, ChevronUp, Pencil, Camera, Crosshair } from 'lucide-react';
 import { RangeSession, RangeGroup, Rifle, Load, EnvironmentalConditions } from '../types';
 import { generateId } from '../utils/id';
@@ -19,6 +20,21 @@ interface RangeSessionLoggerProps {
   ammo?: any[];
   setAmmo?: (ammo: any[] | ((prev: any[]) => any[])) => void;
 }
+
+function uploadTargetPhoto(groupId: string, dataUrl: string) {
+  try {
+    const base64 = dataUrl.split(',')[1];
+    if (!base64) return;
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    supabase.storage.from('range-photos')
+      .upload(`targets/${groupId}.jpg`, bytes, { contentType: 'image/jpeg', upsert: true })
+      .then((result: any) => { if (result.error) console.warn('Target photo upload:', result.error.message); });
+  } catch (e) { console.warn('uploadTargetPhoto:', e); }
+}
+
+
+
+
 
 export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo = [], setAmmo }: RangeSessionLoggerProps) {
   const [isAdding, setIsAdding] = useState(false);
@@ -47,6 +63,19 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
   // Local state to hold raw velocity strings for inputs
   const [velocityInputs, setVelocityInputs] = useState<Record<string, string>>({});
   const [targetImages, setTargetImages] = useState<Record<string, string>>({});
+  const [historyPhotoUrls, setHistoryPhotoUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!sessions || sessions.length === 0) return;
+    const urls: Record<string, string> = {};
+    sessions.forEach(s => {
+      (s.groups || []).forEach(g => {
+        const url = (g as any).targetPhotoUrl;
+        if (url) urls[g.id] = url;
+      });
+    });
+    setHistoryPhotoUrls(prev => ({ ...prev, ...urls }));
+  }, [sessions.length]);
   const [targetAnalyses, setTargetAnalyses] = useState<Record<string, any>>({});
   const [analyzerGroupId, setAnalyzerGroupId] = useState<string | null>(null);
 
@@ -145,9 +174,12 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
       sd = Math.sqrt(variance);
     }
 
-    setGroups(groups.map(g => 
-      g.id === id ? { ...g, velocityEs: parseFloat(es.toFixed(1)), velocitySd: parseFloat(sd.toFixed(1)), rounds: velocities.length > 0 ? velocities.length : g.rounds } : g
-    ));
+    setGroups(groups.map(g => {
+      if (g.id !== id) return g;
+      const updated: any = { ...g, velocityEs: parseFloat(es.toFixed(1)), velocitySd: parseFloat(sd.toFixed(1)), rounds: velocities.length > 0 ? velocities.length : g.rounds };
+      updated.velocities = velocities.length > 0 ? velocities : (g as any).velocities;
+      return updated;
+    }));
   };
 
   const handleVelocityFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,9 +306,12 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
     });
     setGroups(session.groups);
     setNextGroupNumber(Math.max(...session.groups.map(g => g.groupId), 0) + 1);
-    // Restore velocity inputs as empty strings (raw data not stored, ES/SD still displayed)
+    // Restore velocity inputs from stored velocities if available
     const inputs: Record<string, string> = {};
-    session.groups.forEach(g => { inputs[g.id] = ''; });
+    session.groups.forEach(g => {
+      const vels = (g as any).velocities as number[] | undefined;
+      inputs[g.id] = vels && vels.length > 0 ? vels.join(', ') : '';
+    });
     setVelocityInputs(inputs);
     setIsAdding(true);
     setActiveView('logger');
@@ -315,7 +350,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
     const groupsWithVelocities = groups.map(g => {
       const raw = velocityInputs[g.id] || '';
       const vels = raw.split(',').map((v: string) => parseFloat(v.trim())).filter((v: number) => !isNaN(v) && v > 0);
-      return { ...g, velocities: vels.length > 0 ? vels : (g.velocities || undefined) };
+      return { ...(g as any), velocities: vels.length > 0 ? vels : ((g as any).velocities || undefined) };
     });
 
     if (editingSessionId) {
@@ -331,7 +366,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
               zeroDriftUnit: zeroDrift ? zeroDriftUnit : undefined,
               ammoType: ammoType,
               ammoUsageId: ammoUsageId || undefined,
-              shotsFired: shotsFired ? parseInt(shotsFired) : undefined,
+              shotsFired: groupsWithVelocities.reduce((s: number, g: any) => s + (g.rounds || 0), 0) || undefined,
               conditions: envConditions,
               groups: groupsWithVelocities,
             }
@@ -348,12 +383,12 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
         zeroDriftUnit: zeroDrift ? zeroDriftUnit : undefined,
         ammoType: ammoType,
         ammoUsageId: ammoUsageId || undefined,
-        shotsFired: shotsFired ? parseInt(shotsFired) : undefined,
+        shotsFired: groupsWithVelocities.reduce((s: number, g: any) => s + (g.rounds || 0), 0) || undefined,
         conditions: envConditions,
         groups: groupsWithVelocities,
         createdAt: new Date().toISOString(),
       } as any;
-      setSessions([newSession, ...sessions]);
+      setSessions((prev: RangeSession[]) => [newSession, ...prev]);
     }
 
     // Deduct shots fired from ammo inventory (only on new session, not edit)
@@ -507,6 +542,15 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                                       <span className="text-xs font-semibold text-slate-300">Group #{group.groupId}</span>
                                       <span className="text-xs text-slate-500">{group.rounds} rounds</span>
                                     </div>
+                                    {(historyPhotoUrls[group.id] || targetImages[group.id]) && (
+                                      <div className="mb-2">
+                                        <img
+                                          src={historyPhotoUrls[group.id] || targetImages[group.id]}
+                                          alt={`Group ${group.groupId} target`}
+                                          className="w-full max-h-48 object-contain rounded border border-slate-700 bg-slate-950"
+                                        />
+                                      </div>
+                                    )}
                                     <div className="grid grid-cols-4 gap-2 text-xs">
                                       <div><span className="text-slate-500 block">Size</span><span className="text-white font-mono">{group.groupSize.toFixed(4)}"</span></div>
 <div><span className="text-slate-500 block">Vel ES</span><span className="text-white font-mono">{group.velocityEs} fps</span></div>
@@ -542,7 +586,32 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
             distance={(groups.find((g: any) => g.id === _gid) as any)?.distance || ''}
             onSave={(analysis: any, annotatedImage: string) => {
               setTargetAnalyses((prev: any) => ({ ...prev, [_gid]: analysis }));
-              setTargetImages((prev: any) => ({ ...prev, [_gid]: annotatedImage }));
+              const _gidCopy = _gid;
+              setTargetImages((prev: any) => ({ ...prev, [_gidCopy]: annotatedImage }));
+              supabase.storage.from('range-photos')
+                .upload(`targets/${_gidCopy}.jpg`, (() => {
+                  const base64 = annotatedImage.split(',')[1];
+                  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                })(), { contentType: 'image/jpeg', upsert: true })
+                .then(() => {
+                  const { data } = supabase.storage.from('range-photos').getPublicUrl(`targets/${_gidCopy}.jpg`);
+                  setGroups((prev: any) => prev.map((g: any) =>
+                    g.id === _gidCopy ? { ...g, targetPhotoUrl: data.publicUrl } : g
+                  ));
+                });
+              supabase.storage.from('range-photos')
+                .upload(`targets/${_gid}.jpg`, (() => {
+                  const base64 = annotatedImage.split(',')[1];
+                  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                })(), { contentType: 'image/jpeg', upsert: true })
+                .then(() => {
+                  const { data } = supabase.storage.from('range-photos').getPublicUrl(`targets/${_gid}.jpg`);
+                  const url = data.publicUrl;
+                  setGroups((prev: any) => prev.map((g: any) =>
+                    g.id === _gid ? { ...g, targetPhotoUrl: url } : g
+                  ));
+                });
+              uploadTargetPhoto(_gid, annotatedImage);
               setGroups((prev: any) => prev.map((g: any) => {
                 if (g.id !== _gid) return g;
                 return {
@@ -579,18 +648,15 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
               <CardTitle className="text-white text-base">Session Setup</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Row 1: Rifle | Ammo Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-400">Rifle</Label>
                   <Select value={selectedRifleId} onValueChange={setSelectedRifleId}>
-                    <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
-                      <SelectValue placeholder="Select rifle" />
-                    </SelectTrigger>
+                    <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9"><SelectValue placeholder="Select rifle" /></SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-700">
                       {rifles.map(r => (
-                        <SelectItem key={r.id} value={r.id} className="text-white">
-                          {r.caliber} - {r.action}
-                        </SelectItem>
+                        <SelectItem key={r.id} value={r.id} className="text-white">{r.caliber} - {r.action}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -599,33 +665,28 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                   <Label className="text-xs text-slate-400">Ammo Type</Label>
                   <div className="flex gap-1 bg-slate-950 border border-slate-700 rounded-md p-1 h-9 items-center">
                     {(['handload', 'factory'] as const).map(t => (
-                      <button
-                        key={t}
-                        type="button"
+                      <button key={t} type="button"
                         onClick={() => { setAmmoType(t); setSelectedLoadId(''); setAmmoUsageId(''); }}
                         className={`flex-1 py-0.5 rounded text-xs font-bold uppercase tracking-widest transition-colors ${ammoType === t ? 'text-slate-900' : 'text-slate-500 hover:text-white'}`}
-                        style={ammoType === t ? { backgroundColor: '#f59e0b' } : {}}
-                      >
+                        style={ammoType === t ? { backgroundColor: '#f59e0b' } : {}}>
                         {t === 'handload' ? 'Handload' : 'Factory'}
                       </button>
                     ))}
                   </div>
                 </div>
+              </div>
+              {/* Row 2: Date | Load Recipe/Factory Ammo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-400">Date</Label>
-                  <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9" />
+                  <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-slate-950 border-slate-700 text-white h-9" style={{ colorScheme: "dark" }} />
                 </div>
-              </div>
-              {/* Conditional: Load Recipe for handloads, Factory Ammo selector for factory */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {ammoType === 'handload' ? (
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-400">Load Recipe</Label>
                     <Select value={selectedLoadId} onValueChange={setSelectedLoadId}>
-                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
-                        <SelectValue placeholder="Select load" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-700">
+                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9"><SelectValue placeholder="Select load" /></SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700 max-h-60 overflow-y-auto" position="popper" sideOffset={4}>
                         {loads.map(l => (
                           <SelectItem key={l.id} value={l.id} className="text-white">
                             {l.charge}gr — {l.bulletId || ''} {l.powderId || ''}
@@ -638,9 +699,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-400">Factory Ammo</Label>
                     <Select value={ammoUsageId} onValueChange={setAmmoUsageId}>
-                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9">
-                        <SelectValue placeholder="Select ammo…" />
-                      </SelectTrigger>
+                      <SelectTrigger className="bg-slate-950 border-slate-700 text-white h-9"><SelectValue placeholder="Select ammo…" /></SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-700">
                         {ammo.filter((a: any) => a.type === 'factory').length === 0
                           ? <SelectItem value="_none" disabled className="text-slate-500">No factory ammo in inventory</SelectItem>
@@ -648,21 +707,18 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                               <SelectItem key={a.id} value={a.id} className="text-white">
                                 {a.brand}{a.name ? ` ${a.name}` : ''} — {a.caliber} ({a.quantity} rds)
                               </SelectItem>
-                            ))
-                        }
+                            ))}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
+              </div>
+              {/* Row 3: Shots Fired (auto) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Shots Fired</Label>
-                  <Input
-                    type="number"
-                    value={shotsFired}
-                    onChange={e => setShotsFired(e.target.value)}
-                    placeholder="e.g. 44"
-                    className="bg-slate-950 border-slate-700 text-white h-9"
-                  />
+                  <Label className="text-xs text-slate-400">Shots Fired <span className="text-slate-600 font-normal normal-case">(auto-updated from groups)</span></Label>
+                  <Input readOnly value={groups.reduce((s, g) => s + (g.rounds || 0), 0) || ''}
+                    placeholder="auto" className="bg-slate-950 border-slate-700 text-slate-400 h-9 cursor-default" />
                 </div>
               </div>
 
@@ -746,17 +802,14 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
           {/* Groups */}
           <Card className="bg-slate-900 border-slate-800 card-tactical">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-white text-base">Shooting Groups</CardTitle>
-                <Button onClick={addGroup} className="bg-amber-600 hover:bg-amber-500 text-white" size="sm">
-                  <Plus className="mr-1.5 h-4 w-4" />Add Group
-                </Button>
-              </div>
+              <CardTitle className="text-white text-base">Shooting Groups</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {groups.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
-                  No groups logged yet. Click "Add Group" to start.
+                <div onClick={addGroup}
+                  className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-800 bg-slate-950 rounded-lg cursor-pointer hover:border-amber-700 hover:bg-slate-900 transition-colors">
+                  <Plus className="w-5 h-5 mx-auto mb-1 opacity-40" />
+                  <p className="text-sm">Click to add a group</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -813,7 +866,7 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-slate-400">MR (in)</Label>
+                          <Label className="text-xs text-slate-400">Mean Radius (in)</Label>
                           <Input
                             type="number"
                             step="0.0001"
@@ -849,7 +902,11 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                                   const file = e.target.files?.[0];
                                   if (!file) return;
                                   const reader = new FileReader();
-                                  reader.onload = (ev) => setTargetImages(prev => ({ ...prev, [group.id]: ev.target?.result as string }));
+                                  reader.onload = (ev) => {
+                                    const d = ev.target?.result as string;
+                                    setTargetImages(prev => ({ ...prev, [group.id]: d }));
+                                    uploadTargetPhoto(group.id, d);
+                                  };
                                   reader.readAsDataURL(file);
                                 }} />
                               </label>
@@ -978,7 +1035,9 @@ export function RangeSessionLogger({ sessions, setSessions, rifles, loads, ammo 
                                       if (!file) return;
                                       const reader = new FileReader();
                                       reader.onload = (ev) => {
-                                        setTargetImages((prev: any) => ({ ...prev, [group.id]: ev.target?.result as string }));
+                                        const d2 = ev.target?.result as string;
+                                        setTargetImages((prev: any) => ({ ...prev, [group.id]: d2 }));
+                                        uploadTargetPhoto(group.id, d2);
                                         setTargetAnalyses((prev: any) => { const n = { ...prev }; delete n[group.id]; return n; });
                                       };
                                       reader.readAsDataURL(file);

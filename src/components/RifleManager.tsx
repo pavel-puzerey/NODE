@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -122,6 +123,49 @@ interface RifleManagerProps {
 
 export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [hoveredRifleId, setHoveredRifleId] = useState<string | null>(null);
+
+  // Load photos from Supabase storage on mount / rifle changes
+  useEffect(() => {
+    const loadPhotos = async () => {
+      const newImages: Record<string, string> = {};
+      for (const rifle of rifles) {
+        const path = `rifle-photos/${rifle.id}.jpg`;
+        const { data } = supabase.storage.from('rifle-photos').getPublicUrl(path);
+        if (data?.publicUrl) {
+          // Check if file exists by trying to fetch it
+          try {
+            const res = await fetch(data.publicUrl, { method: 'HEAD' });
+            if (res.ok) newImages[rifle.id] = data.publicUrl + '?t=' + Date.now();
+          } catch {}
+        }
+      }
+      setRifleImages(newImages);
+    };
+    if (rifles.length > 0) loadPhotos();
+  }, [rifles.map(r => r.id).join(',')]);
+
+  const uploadPhoto = async (rifleId: string, dataUrl: string): Promise<string | null> => {
+    setPhotoUploading(true);
+    try {
+      const base64 = dataUrl.split(',')[1];
+      const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+      const { error } = await supabase.storage
+        .from('rifle-photos')
+        .upload(`rifle-photos/${rifleId}.jpg`, bytes, { contentType: 'image/jpeg', upsert: true });
+      if (error) { console.error('Photo upload error:', error); return null; }
+      const { data } = supabase.storage.from('rifle-photos').getPublicUrl(`rifle-photos/${rifleId}.jpg`);
+      return data.publicUrl + '?t=' + Date.now();
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const deletePhoto = async (rifleId: string) => {
+    await supabase.storage.from('rifle-photos').remove([`rifle-photos/${rifleId}.jpg`]);
+    setRifleImages(prev => { const n = { ...prev }; delete n[rifleId]; return n; });
+  };
   const [rifleTypeFilter, setRifleTypeFilter] = useState<'bolt' | 'gas'>('bolt');
   const [rifleImages, setRifleImages] = useState<Record<string, string>>({});
   const [newRifleImage, setNewRifleImage] = useState<string>('');
@@ -155,8 +199,12 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
       createdAt: new Date().toISOString(),
     } as any;
 
-    if (newRifleImage) setRifleImages(prev => ({ ...prev, [rifle.id]: newRifleImage }));
     setRifles([...rifles, rifle]);
+    if (newRifleImage) {
+      uploadPhoto(rifle.id, newRifleImage).then(url => {
+        if (url) setRifleImages(prev => ({ ...prev, [rifle.id]: url }));
+      });
+    }
     setNewRifle({
       action: '',
       caliber: '',
@@ -182,6 +230,14 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
   const saveEdit = () => {
     if (!editingId) return;
     setRifles(rifles.map(r => r.id === editingId ? { ...r, ...editForm } as Rifle : r));
+    // Upload pending photo if set during edit
+    const pendingImg = (editForm as any).__pendingPhoto;
+    if (pendingImg && editingId) {
+      const id = editingId;
+      uploadPhoto(id, pendingImg).then(url => {
+        if (url) setRifleImages(prev => ({ ...prev, [id]: url }));
+      });
+    }
     setEditingId(null);
     setEditForm({});
   };
@@ -298,21 +354,29 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                   </div>
                 )}
                 <div className="pt-2 border-t border-slate-800">
-                  {rifleImages[editingId!] ? (
-                    <div className="relative group/img inline-block" style={{ width: '25%' }}>
-                      <img src={rifleImages[editingId!]} alt="Rifle"
-                        className="w-full h-auto object-contain rounded-lg border border-slate-700 bg-slate-950 block" />
-                      <label className="absolute bottom-2 right-2 cursor-pointer bg-amber-600 hover:bg-amber-500 rounded-md px-2 py-1 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5 text-white" /><span className="text-white text-xs font-semibold">Replace</span>
-                        <input type="file" accept="image/*" className="hidden"
-                          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            const file = e.target.files?.[0]; if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (ev) => setRifleImages(prev => ({ ...prev, [editingId!]: ev.target?.result as string }));
-                            reader.readAsDataURL(file);
-                          }} />
-                      </label>
+                  {(rifleImages[editingId!] || (editForm as any).__pendingPhoto) ? (
+                    <div className="flex items-end gap-3">
+                      <div className="relative group/img inline-block" style={{ width: '25%' }}>
+                        <img src={(editForm as any).__pendingPhoto || rifleImages[editingId!]} alt="Rifle"
+                          className="w-full h-auto object-contain rounded-lg border border-slate-700 bg-slate-950 block" />
+                        <label className="absolute bottom-2 right-2 cursor-pointer bg-amber-600 hover:bg-amber-500 rounded-md px-2 py-1 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5 text-white" /><span className="text-white text-xs font-semibold">Replace</span>
+                          <input type="file" accept="image/*" className="hidden"
+                            onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => setEditForm(prev => ({ ...prev, __pendingPhoto: ev.target?.result as string } as any));
+                              reader.readAsDataURL(file);
+                            }} />
+                        </label>
+                      </div>
+                      <button
+                        onClick={() => { deletePhoto(editingId!); setEditForm(prev => { const n = { ...prev } as any; delete n.__pendingPhoto; return n; }); }}
+                        className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 mb-1"
+                      >
+                        <X className="w-3 h-3" /> Delete Photo
+                      </button>
                     </div>
                   ) : (
                     <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-300 hover:text-white border border-slate-600 bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-md transition-colors">
@@ -321,7 +385,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                           const file = e.target.files?.[0]; if (!file) return;
                           const reader = new FileReader();
-                          reader.onload = (ev) => setRifleImages(prev => ({ ...prev, [editingId!]: ev.target?.result as string }));
+                          reader.onload = (ev) => setEditForm(prev => ({ ...prev, __pendingPhoto: ev.target?.result as string } as any));
                           reader.readAsDataURL(file);
                         }} />
                     </label>
@@ -411,19 +475,38 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
                     })()}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {rifleImages[rifle.id] && (
-                    <img src={rifleImages[rifle.id]} alt="Rifle"
-                      style={{ width: '72px', height: 'auto' }}
-                      className="object-contain rounded border border-slate-700 bg-slate-950 block" />
+                    <div className="relative"
+                      onMouseEnter={() => setHoveredRifleId(rifle.id)}
+                      onMouseLeave={() => setHoveredRifleId(null)}
+                    >
+                      <img
+                        src={rifleImages[rifle.id]}
+                        alt="Rifle"
+                        style={{ width: 72, height: 'auto', cursor: 'zoom-in' }}
+                        className="object-contain rounded border border-slate-700 bg-slate-950 block"
+                      />
+                      {hoveredRifleId === rifle.id && (
+                        <div className="absolute z-50 bottom-0 right-full mr-2 pointer-events-none"
+                          style={{ width: 220 }}>
+                          <img
+                            src={rifleImages[rifle.id]}
+                            alt="Rifle enlarged"
+                            className="w-full h-auto object-contain rounded-lg border border-slate-600 bg-slate-950 shadow-2xl"
+                            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
                   <div className="flex items-center gap-1">
-<Button size="sm" variant="ghost" onClick={() => startEdit(rifle)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => deleteRifle(rifle.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(rifle)} className="text-slate-400 hover:text-white hover:bg-slate-700 h-8 w-8 p-0">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => deleteRifle(rifle.id)} className="text-slate-500 hover:text-red-400 hover:bg-red-900/20 h-8 w-8 p-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -440,7 +523,7 @@ export function RifleManager({ rifles, setRifles, sessions = [] }: RifleManagerP
         >
           <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p className="text-lg font-medium text-slate-400">Add your first {rifleTypeFilter === 'gas' ? 'gas-operated' : 'bolt action'} rifle</p>
-          <p className="text-sm">Click to start tracking data.</p>
+          <p className="text-sm">Click to start tracking rifle inventory.</p>
         </div>
       )}
     </div>

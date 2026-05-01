@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Rifle, Load, GearItem, Accessory, Glass, RangeSession, MatchEvent } from '../types'
@@ -55,7 +55,8 @@ function toGlass(r: any): Glass {
     turretType: r.turret_type, objectiveLens: r.objective_lens, eyepiece: r.eyepiece,
     hasReticle: r.has_reticle, prismType: r.prism_type, fieldOfView: r.field_of_view,
     weight: r.weight, maxRange: r.max_range, angleComp: r.angle_comp,
-    ballisticCalc: r.ballistic_calc, notes: r.notes, createdAt: r.created_at }
+    ballisticCalc: r.ballistic_calc, notes: r.notes, createdAt: r.created_at,
+    reticleImageUrl: r.reticle_image_url || undefined } as any
 }
 function fromGlass(g: Partial<Glass>, userId: string) {
   return { user_id: userId, type: g.type, brand: g.brand, model: g.model,
@@ -63,24 +64,37 @@ function fromGlass(g: Partial<Glass>, userId: string) {
     turret_type: g.turretType, objective_lens: g.objectiveLens, eyepiece: g.eyepiece,
     has_reticle: g.hasReticle, prism_type: g.prismType, field_of_view: g.fieldOfView,
     weight: g.weight, max_range: g.maxRange, angle_comp: g.angleComp,
-    ballistic_calc: g.ballisticCalc, notes: g.notes }
+    ballistic_calc: g.ballisticCalc, notes: g.notes,
+    reticle_image_url: (g as any).reticleImageUrl || null }
 }
 
 function toSession(r: any): RangeSession {
   return {
-    id: r.id, rifleId: r.rifle_id, loadId: r.load_id,
-    sessionDate: r.session_date, notes: r.notes,
+    id: r.id,
+    rifleId: r.rifle_id,
+    loadId: r.load_id,
+    sessionDate: r.session_date,
+    notes: r.notes || undefined,
     conditions: (r.temperature != null) ? {
       temperature: r.temperature, windSpeed: r.wind_speed,
       windDirection: r.wind_direction, humidity: r.humidity, pressure: r.pressure
     } : undefined,
     groups: (r.range_groups || []).map((g: any) => ({
-      id: g.id, groupId: g.group_id, groupSize: g.group_size,
-      extremeSpread: g.extreme_spread, groupSd: g.group_sd,
-      rounds: g.rounds, velocityEs: g.velocity_es, velocitySd: g.velocity_sd
+      id: g.id, groupId: g.group_id, groupSize: g.group_size ?? 0,
+      extremeSpread: g.extreme_spread ?? 0, groupSd: g.group_sd ?? 0,
+      rounds: g.rounds ?? 0, velocityEs: g.velocity_es ?? 0, velocitySd: g.velocity_sd ?? 0,
+      velocities: g.velocities || undefined,
+      velocityTimes: g.velocity_times || undefined,
+      distance: g.distance || undefined,
+      targetPhotoUrl: g.target_photo_url || undefined,
     })),
-    createdAt: r.created_at
-  }
+    zeroDrift: r.zero_drift || undefined,
+    zeroDriftUnit: r.zero_drift_unit || undefined,
+    ammoType: r.ammo_type || undefined,
+    ammoUsageId: r.ammo_usage_id || undefined,
+    shotsFired: r.shots_fired ?? undefined,
+    createdAt: r.created_at,
+  } as any
 }
 
 function toMatch(r: any): MatchEvent {
@@ -123,54 +137,93 @@ function useTable<T extends { id: string }>(
 
   useEffect(() => { fetch() }, [fetch])
 
+  const itemsRef = useRef<T[]>([])
+  itemsRef.current = items
+
   const setItemsWrapper = useCallback(async (value: T[] | ((prev: T[]) => T[])) => {
     if (!user) return
-    const next = typeof value === 'function' ? value(items) : value
+    const prev = itemsRef.current
+    const next = typeof value === 'function' ? value(prev) : value
 
-    // Diff: find added, removed, updated
-    const prevIds = new Set(items.map(i => i.id))
+    const prevIds = new Set(prev.map(i => i.id))
     const nextIds = new Set(next.map(i => i.id))
 
     const added   = next.filter(i => !prevIds.has(i.id))
-    const removed = items.filter(i => !nextIds.has(i.id))
-    const updated = next.filter(i => prevIds.has(i.id) && JSON.stringify(i) !== JSON.stringify(items.find(p => p.id === i.id)))
+    const removed = prev.filter(i => !nextIds.has(i.id))
+    const updated = next.filter(i => prevIds.has(i.id) && JSON.stringify(i) !== JSON.stringify(prev.find(p => p.id === i.id)))
 
     for (const item of added) {
       const row = { id: item.id, ...fromT(item, user.id) }
-      await supabase.from(table).insert(row)
+      const { error } = await supabase.from(table).insert(row)
+      if (error) console.error(`insert ${table}:`, error.message, row)
     }
     for (const item of removed) {
-      await supabase.from(table).delete().eq('id', item.id)
+      const { error } = await supabase.from(table).delete().eq('id', item.id)
+      if (error) console.error(`delete ${table}:`, error.message)
     }
     for (const item of updated) {
-      await supabase.from(table).update(fromT(item, user.id)).eq('id', item.id)
+      const updateRow = fromT(item, user.id)
+      const { error } = await supabase.from(table).update(updateRow).eq('id', item.id)
+      if (error) console.error(`update ${table}:`, error.message)
     }
 
     setItems(next)
-  }, [user, items])
+  }, [user])
 
   return [items, setItemsWrapper, loading] as const
 }
 
 // ── Sessions (special — has child groups) ────────────────────────────────────
 
+const sessionRow = (s: RangeSession, userId: string) => ({
+  id: s.id, user_id: userId,
+  rifle_id: (s as any).rifleId || null,
+  load_id: (s as any).loadId || null,
+  session_date: s.sessionDate,
+  notes: (s as any).notes || null,
+  temperature: s.conditions?.temperature ?? null,
+  wind_speed: s.conditions?.windSpeed ?? null,
+  wind_direction: s.conditions?.windDirection ?? null,
+  humidity: s.conditions?.humidity ?? null,
+  pressure: s.conditions?.pressure ?? null,
+  zero_drift: (s as any).zeroDrift ?? null,
+  zero_drift_unit: (s as any).zeroDriftUnit ?? null,
+  ammo_type: (s as any).ammoType ?? null,
+  ammo_usage_id: (s as any).ammoUsageId ?? null,
+  shots_fired: (s as any).shotsFired ?? null,
+})
+
+const groupRows = (s: RangeSession, sessionId: string) =>
+  s.groups.map(g => ({
+    id: g.id, session_id: sessionId, group_id: g.groupId,
+    group_size: g.groupSize ?? null,
+    extreme_spread: g.extremeSpread ?? null,
+    group_sd: g.groupSd ?? null,
+    rounds: g.rounds ?? null,
+    velocity_es: g.velocityEs ?? null,
+    velocity_sd: g.velocitySd ?? null,
+    velocities: (g as any).velocities ?? null,
+    velocity_times: (g as any).velocityTimes ?? null,
+    distance: (g as any).distance ?? null,
+    target_photo_url: (g as any).targetPhotoUrl ?? null,
+  }))
+
 function useSessions() {
   const { user } = useAuth()
   const [sessions, setSessions] = useState<RangeSession[]>([])
+  const sessionsRef = useRef<RangeSession[]>([])
+  sessionsRef.current = sessions
   const [loading, setLoading] = useState(true)
 
   const fetch = useCallback(async () => {
-      if (!user) {
-        setSessions([])
-        setLoading(false)
-        return
-      }
-      setLoading(true)
-    const { data } = await supabase
+    if (!user) { setSessions([]); setLoading(false); return }
+    setLoading(true)
+    const { data, error } = await supabase
       .from('range_sessions')
       .select('*, range_groups(*)')
       .eq('user_id', user.id)
       .order('session_date', { ascending: false })
+    if (error) console.error('fetch sessions:', error)
     if (data) setSessions(data.map(toSession))
     setLoading(false)
   }, [user])
@@ -179,41 +232,56 @@ function useSessions() {
 
   const setSessionsWrapper = useCallback(async (value: RangeSession[] | ((prev: RangeSession[]) => RangeSession[])) => {
     if (!user) return
-    const next = typeof value === 'function' ? value(sessions) : value
+    const prev = sessionsRef.current
+    const next = typeof value === 'function' ? value(prev) : value
 
-    const prevIds = new Set(sessions.map(s => s.id))
+    const prevIds = new Set(prev.map(s => s.id))
     const nextIds = new Set(next.map(s => s.id))
 
-    // Handle deletions
-    for (const s of sessions.filter(s => !nextIds.has(s.id))) {
-      await supabase.from('range_sessions').delete().eq('id', s.id)
+
+    // Deletions
+    const toDelete = prev.filter(s => !nextIds.has(s.id))
+    for (const s of toDelete) {
+      const { error } = await supabase.from('range_sessions').delete().eq('id', s.id)
+      if (error) console.error('delete session:', error)
     }
 
-    // Handle additions
-    for (const s of next.filter(s => !prevIds.has(s.id))) {
-      const { data: inserted } = await supabase.from('range_sessions').insert({
-        id: s.id, user_id: user.id,
-        rifle_id: s.rifleId || null, load_id: s.loadId || null,
-        session_date: s.sessionDate, notes: s.notes,
-        temperature: s.conditions?.temperature, wind_speed: s.conditions?.windSpeed,
-        wind_direction: s.conditions?.windDirection, humidity: s.conditions?.humidity,
-        pressure: s.conditions?.pressure,
-      }).select().single()
+    // Additions
+    const toAdd = next.filter(s => !prevIds.has(s.id))
+    for (const s of toAdd) {
+      const row = sessionRow(s, user.id)
+        const { error: se } = await supabase.from('range_sessions').insert(row)
+      if (se) { console.error('insert session:', se); continue }
+      if (s.groups.length > 0) {
+        const gRows = groupRows(s, s.id)
+            const { error: ge } = await supabase.from('range_groups').insert(gRows)
+        if (ge) console.error('insert groups:', ge)
+      }
+    }
 
-      if (inserted && s.groups.length > 0) {
-        await supabase.from('range_groups').insert(
-          s.groups.map(g => ({
-            id: g.id, session_id: inserted.id, group_id: g.groupId,
-            group_size: g.groupSize, extreme_spread: g.extremeSpread,
-            group_sd: g.groupSd, rounds: g.rounds,
-            velocity_es: g.velocityEs, velocity_sd: g.velocitySd,
-          }))
-        )
+    // Updates
+    for (const s of next.filter(s => prevIds.has(s.id))) {
+      const old = prev.find(p => p.id === s.id)!
+      const sRow = sessionRow(s, user.id)
+      const oldRow = sessionRow(old, user.id)
+      const sessionChanged = JSON.stringify(sRow) !== JSON.stringify(oldRow)
+      const groupsChanged = JSON.stringify(groupRows(s, s.id)) !== JSON.stringify(groupRows(old, s.id))
+
+      if (sessionChanged) {
+        const { error } = await supabase.from('range_sessions').update(sRow).eq('id', s.id)
+        if (error) console.error('update session:', error)
+      }
+      if (groupsChanged) {
+        await supabase.from('range_groups').delete().eq('session_id', s.id)
+        if (s.groups.length > 0) {
+          const { error } = await supabase.from('range_groups').insert(groupRows(s, s.id))
+          if (error) console.error('update groups:', error)
+        }
       }
     }
 
     setSessions(next)
-  }, [user, sessions])
+  }, [user])  // NOTE: no sessions in deps — uses sessionsRef to avoid stale closure
 
   return [sessions, setSessionsWrapper, loading] as const
 }

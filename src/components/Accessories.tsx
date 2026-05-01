@@ -210,7 +210,7 @@ export function Accessories({ accessories, setAccessories }: AccessoriesProps) {
         <div onClick={() => setIsAdding(true)} className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-amber-600 hover:bg-slate-900/50 transition-colors">
           <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p className="text-lg font-medium text-slate-400">Add your first accessory</p>
-          <p className="text-sm">Click to start tracking gear.</p>
+          <p className="text-sm">Click to start tracking accessories.</p>
         </div>
       )}
     </div>

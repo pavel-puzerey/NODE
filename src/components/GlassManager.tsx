@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase';
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -13,12 +14,29 @@ interface GlassManagerProps {
   setGlass: (glass: Glass[] | ((prev: Glass[]) => Glass[])) => void;
 }
 
+async function uploadReticlePhoto(glassId: string, dataUrl: string): Promise<string | null> {
+  try {
+    const base64 = dataUrl.split(',')[1];
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const path = `reticles/${glassId}.jpg`;
+    const { error } = await supabase.storage.from('glass-photos').upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
+    if (error) { console.error('Reticle upload error:', error); return null; }
+    const { data } = supabase.storage.from('glass-photos').getPublicUrl(path);
+    return data.publicUrl + '?t=' + Date.now();
+  } catch (e) { console.error(e); return null; }
+}
+
+async function deleteReticlePhoto(glassId: string) {
+  await supabase.storage.from('glass-photos').remove([`reticles/${glassId}.jpg`]);
+}
+
 export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [reticleUploadId, setReticleUploadId] = useState<string | null>(null);
+  const [reticleUrls, setReticleUrls] = useState<Record<string, string>>({});
 
   // Form State
   const [type, setType] = useState<string>('rifle-scope');
@@ -40,6 +58,26 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
   const [ballisticCalc, setBallisticCalc] = useState(false);
   const [notes, setNotes] = useState('');
   const [reticleImage, setReticleImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const item of glass) {
+        if ((item as any).reticleImageUrl) {
+          urls[item.id] = (item as any).reticleImageUrl;
+        } else {
+          const path = `reticles/${item.id}.jpg`;
+          const { data } = supabase.storage.from('glass-photos').getPublicUrl(path);
+          try {
+            const res = await fetch(data.publicUrl, { method: 'HEAD' });
+            if (res.ok) urls[item.id] = data.publicUrl + '?t=' + Date.now();
+          } catch {}
+        }
+      }
+      setReticleUrls(urls);
+    };
+    loadUrls();
+  }, [glass.map(g => g.id).join(',')]);
 
   useEffect(() => {
     if (reticleUploadId) {
@@ -72,7 +110,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!brand || !model) return;
 
     const item: any = {
@@ -96,9 +134,18 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
       angleComp: type === 'rangefinder' ? angleComp : undefined,
       ballisticCalc: type === 'rangefinder' ? ballisticCalc : undefined,
       notes,
-      reticleImage: reticleImage || undefined,
+      reticleImage: undefined, // stored in Supabase storage
       createdAt: editingId ? (glass.find(g => g.id === editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
     };
+
+    // Upload reticle photo first so URL is included in saved item
+    if (reticleImage && reticleImage.startsWith('data:')) {
+      const url = await uploadReticlePhoto(item.id, reticleImage);
+      if (url) {
+        item.reticleImageUrl = url;
+        setReticleUrls(prev => ({ ...prev, [item.id]: url }));
+      }
+    }
 
     if (editingId) {
       setGlass(glass.map(g => g.id === editingId ? item : g));
@@ -128,13 +175,14 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
     setAngleComp(item.angleComp || false);
     setBallisticCalc(item.ballisticCalc || false);
     setNotes(item.notes || '');
-    setReticleImage((item as any)?.reticleImage || null);
+    setReticleImage((item as any)?.reticleImageUrl || reticleUrls[item.id] || null);
     setIsAdding(true);
     setExpandedId(null);
   };
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this item?')) {
+      deleteReticlePhoto(id);
       setGlass(glass.filter(g => g.id !== id));
     }
   };
@@ -227,12 +275,12 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
           {type === 'rifle-scope' && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Magnification</Label>
+                <Label className="text-slate-300">Magnification × Obj</Label>
                 <Input
                   value={magnification}
                   onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setMagnification(e.target.value)}
                   className="bg-slate-900 border-slate-700 text-white"
-                  placeholder="e.g. 5-25x"
+                  placeholder="e.g. 5-25x50"
                 />
               </div>
               <div className="space-y-2">
@@ -437,7 +485,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
           >
             <Plus className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="text-lg font-medium text-slate-400">Add your first optic</p>
-            <p className="text-sm">Click to start tracking glass.</p>
+            <p className="text-sm">Click to start tracking optics.</p>
           </div>
         ) : (
           glass.map((item) => (
@@ -513,7 +561,7 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                       <>
                         {item.magnification && (
                           <div>
-                            <span className="text-slate-500 block text-xs mb-1">Magnification</span>
+                            <span className="text-slate-500 block text-xs mb-1">Magnification × Objective</span>
                             <span className="text-white">{item.magnification}</span>
                           </div>
                         )}
@@ -521,32 +569,6 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                           <div>
                             <span className="text-slate-500 block text-xs mb-1">Reticle</span>
                             <span className="text-white">{item.reticle}</span>
-                          </div>
-                        )}
-                        {(item as any).reticleImage && (
-                          <div className="col-span-2 md:col-span-4 mt-2">
-                            <span className="text-slate-500 block text-xs mb-1">Reticle Image</span>
-                            <img
-                              src={(item as any).reticleImage}
-                              alt="Reticle"
-                              className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950 block pointer-events-none"
-                            />
-                            <div className="mt-1 flex items-center justify-between">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setZoomedImage((item as any).reticleImage!); }}
-                                className="text-xs text-amber-500 hover:text-amber-400 transition-colors"
-                              >
-                                🔍 View enlarged
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setReticleUploadId(item.id); }}
-                                className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
-                              >
-                                📷 Change photo
-                              </button>
-                            </div>
                           </div>
                         )}
                         {item.tubeSize && (
@@ -559,6 +581,32 @@ export function GlassManager({ glass, setGlass }: GlassManagerProps) {
                           <div>
                             <span className="text-slate-500 block text-xs mb-1">Turret Type</span>
                             <span className="text-white">{item.turretType}</span>
+                          </div>
+                        )}
+                        {(reticleUrls[item.id] || (item as any).reticleImageUrl || (item as any).reticleImage) && (
+                          <div className="col-span-2 md:col-span-4 mt-2">
+                            <span className="text-slate-500 block text-xs mb-1">Reticle Image</span>
+                            <img
+                              src={reticleUrls[item.id] || (item as any).reticleImageUrl || (item as any).reticleImage}
+                              alt="Reticle"
+                              className="w-full max-h-48 object-contain rounded-lg border border-slate-700 bg-slate-950 block pointer-events-none"
+                            />
+                            <div className="mt-1 flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setZoomedImage(reticleUrls[item.id] || (item as any).reticleImageUrl || (item as any).reticleImage!); }}
+                                className="text-xs text-amber-500 hover:text-amber-400 transition-colors"
+                              >
+                                🔍 View enlarged
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setReticleUploadId(item.id); }}
+                                className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
+                              >
+                                📷 Change photo
+                              </button>
+                            </div>
                           </div>
                         )}
                       </>
