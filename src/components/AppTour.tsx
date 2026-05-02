@@ -21,22 +21,22 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       {
         tab: 'rifles',
         title: 'Rifles',
-        description: 'Log every rifle with caliber, action, barrel, chassis, trigger, and trigger weight. Round count is tracked automatically from range sessions, with a barrel life warning threshold you can set.',
+        description: 'Log every rifle with caliber, action, barrel, chassis, trigger, and trigger weight. Toggle between Bolt Action and Gas-Operated — gas guns get gas system, BCG, buffer, and handguard fields. Round count is tracked automatically from range sessions with a barrel life warning threshold.',
       },
       {
         tab: 'glass',
         title: 'Optics',
-        description: 'Track rifle scopes, spotting scopes, binoculars, and rangefinders. Upload a reticle photo for any scope and zoom in on demand.',
+        description: 'Track rifle scopes, spotting scopes, binoculars, rangefinders, red dots, and prism scopes. Upload a reticle photo for any scope — click it in the card to zoom in, or use the "Change photo" link to swap it.',
       },
       {
         tab: 'accessories',
         title: 'Accessories',
-        description: 'Record bipods, suppressors, muzzle brakes, bags, slings, chronographs, and other support gear.',
+        description: 'Record bipods, suppressors, chronographs, tripods, scope rings, weather meters, and other support gear. Each type shows relevant fields — ballhead for tripods, fill type for shooting bags.',
       },
       {
         tab: 'gear',
         title: 'Reloading Gear',
-        description: 'Inventory reloading components (bullets, powder, brass, primers) and equipment (press, dies, scale, trimmer, annealer). Lot numbers tracked per item.',
+        description: 'Inventory reloading components (bullets, powder, brass, primers) and equipment (press, dies, scale, trimmer, annealer, expander mandrel die). Lot numbers tracked per item.',
       },
       {
         tab: 'ammo',
@@ -46,42 +46,52 @@ export function AppTour({ onClose, setActiveTab }: AppTourProps) {
       {
         tab: 'torque',
         title: 'Torque Specs',
-        description: 'Record torque values for every fastener per rifle — scope rings, rail screws, action screws, and chassis screws.',
+        description: 'Record torque values for every fastener per rifle — scope rings, scope base, rail screws, chassis action screws, and more. Units selectable per entry (in-lbs, ft-lbs, Nm).',
       },
       {
         tab: 'dope',
         title: 'DOPE',
-        description: 'Build a DOPE card per rifle in MOA or MIL. Enter elevation and windage holds from 100 to 3000 yards. Wind speed columns are editable. Hit Print 3×5 to generate a field-ready index card.',
+        description: 'Build a DOPE card per rifle in MOA or MIL. Add distances individually or use +100 yd increments. Each row is independently deletable. Hit Print 3×5 to generate a field-ready index card.',
       },
       {
         tab: 'range',
         title: 'Range Session',
-        description: 'Log conditions (temp, humidity, wind, pressure, altitude), select rifle and ammo type (handload or factory), then add shooting groups. Upload velocity data from a Garmin or Athlon CSV for automatic dot plots. Use the Target Analyzer to measure group size, mean radius, and MOA directly from a target photo.',
+        description: 'Log conditions (temp, humidity, wind, pressure, altitude), select rifle and ammo type (handload or factory), then add shooting groups. Upload velocity data from a Garmin or Athlon CSV for automatic dot plots with ES, SD, and mean. Groups appear as labeled cards in history.',
+      },
+      {
+        tab: 'range',
+        title: 'Target Analyzer',
+        description: 'Upload a target photo to any group, then hit Analyze. Set a scale reference by clicking two known points, then click each shot hole. The analyzer computes group size, mean radius, and MOA at your specified distance. Results are burned into the exported image.',
       },
       {
         tab: 'loads',
         title: 'Load Recipes',
-        description: 'Document handloads — bullet, powder, charge, brass, primer, OAL, seating depth, and neck tension. Duplicate any recipe as a starting point for new development.',
+        description: 'Document handloads — bullet, powder, charge, brass, primer, OAL, seating depth, and neck tension. Recipes are grouped by bullet for easy navigation. Star a recipe to add it to your Favorites section. Duplicate any recipe as a starting point.',
+      },
+      {
+        tab: 'loads',
+        title: 'Brass Labeler',
+        description: 'Create color-coded marking schemes to identify your brass and track firing counts. Choose Sharpie colors for the body stripe and extractor groove, plus a shape mark on the case head primer face. A live SVG schematic previews your scheme. The app auto-generates a full firing sequence — body colors cycle first, groove colors advance when body colors are exhausted.',
       },
       {
         tab: 'analysis',
         title: 'Load Analysis',
-        description: 'Visualize performance after selecting a rifle. Filter by session and group. Charts include Velocity Trend (individual shots by charge weight), Load Performance Matrix (accuracy vs. consistency), Accuracy Node, and Velocity SD vs Charge.',
+        description: 'Select a rifle, then filter which sessions and groups to include. Choose which plots to display: Velocity Trend (individual shots by charge), Shot Velocity Trace (per-shot sequence within a group), Load Performance Matrix (accuracy vs. consistency), Accuracy Node, and Velocity Consistency. Y-axis controls let you set custom min, max, and step.',
       },
       {
         tab: 'cleaning',
         title: 'Cleaning Log',
-        description: 'Track cleaning sessions per rifle — date, rounds since last clean, products used, and notes.',
+        description: 'Track cleaning sessions per rifle — date, rounds since last clean, and notes.',
       },
       {
         tab: 'calendar',
         title: 'Match Calendar',
-        description: 'Schedule competitions with date, time, and notes. Events are sorted chronologically so your next match is always at the top.',
+        description: 'Schedule competitions in a monthly calendar view. Click any day to add an event, click an event to edit it. The right panel lists all events for the current month.',
       },
       {
         tab: 'settings',
         title: 'Data Management',
-        description: 'Export a full JSON backup of all your data and restore it on any device. You can also permanently delete all data here — with multiple confirmation steps to prevent accidents.',
+        description: 'Export a full JSON backup of all your data and restore it on any device. Permanently delete all data here — with multiple confirmation steps to prevent accidents.',
       },
       {
         title: "You're ready",

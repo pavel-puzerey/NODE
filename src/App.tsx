@@ -51,6 +51,7 @@ function applyTheme(_theme: string, _accent: string, _darkMode: boolean) {
 function AppInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { profile } = useAuth();
   const [activeTab, setActiveTab]           = useLocalStorage<string>('node-active-tab', '');
@@ -106,7 +107,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen text-slate-100 font-sans">
-      {tourOpen && <AppTour onClose={() => setTourOpen(false)} setActiveTab={setActiveTab} />}
+      {tourOpen && <AppTour onClose={() => { setTourOpen(false); setShowWelcome(true); setActiveTab(''); }} setActiveTab={setActiveTab} />}
       {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
 
       {/* Sidebar overlay backdrop */}
@@ -143,7 +144,7 @@ function AppInner() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => { if (item.id === 'feedback') { setFeedbackOpen(true); setSidebarOpen(false); } else { setActiveTab(item.id); setSidebarOpen(false); } }}
+                      onClick={() => { if (item.id === 'feedback') { setFeedbackOpen(true); setSidebarOpen(false); } else { setActiveTab(item.id); setSidebarOpen(false); setShowWelcome(false); } }}
                       className={`w-full flex items-center px-3 py-2.5 rounded-md text-sm transition-colors text-left ${
                         isActive
                           ? 'bg-amber-900/30 text-amber-400 font-medium'
@@ -219,31 +220,55 @@ function AppInner() {
       </div>
 
       <main className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-8" style={{ minHeight: '60vh' }}>
-        {activeTab === 'rifles'      && <RifleManager rifles={rifles} setRifles={setRifles} sessions={sessions} />}
-        {activeTab === 'glass'       && <GlassManager glass={glass} setGlass={setGlass} />}
-        {activeTab === 'accessories' && <Accessories accessories={accessories} setAccessories={setAccessories} />}
-        {activeTab === 'gear'        && <ReloadingGear gear={gear} setGear={setGear} />}
-        {activeTab === 'ammo'        && <AmmoInventory loads={loads} ammo={ammo} setAmmo={setAmmo} />}
-        {activeTab === 'torque'      && <TorqueLog rifles={rifles} />}
-        {activeTab === 'loads'       && <LoadDevelopment loads={loads} setLoads={setLoads} gear={gear} />}
-        {activeTab === 'dope'        && <Dope rifles={rifles} />}
-        {activeTab === 'range'       && <RangeSessionLogger sessions={sessions} setSessions={setSessions} rifles={rifles} loads={loads} ammo={ammo} setAmmo={setAmmo} />}
-        {activeTab === 'calendar'    && <MatchCalendar matches={matches} setMatches={setMatches} />}
-        {activeTab === 'analysis'    && <LoadAnalysis sessions={sessions} rifles={rifles} loads={loads} ammo={ammo} />}
-        {activeTab === 'cleaning'    && <CleaningLog rifles={rifles} />}
-        {activeTab === 'brass-labeler' && <BrassLabeler />}
-        {activeTab === 'settings'    && (
-          <Settings
-            settings={settings}
-            setSettings={setSettings}
-            setRifles={setRifles}
-            setLoads={setLoads}
-            setGear={setGear}
-            setSessions={setSessions}
-            setMatches={setMatches}
-            setAccessories={setAccessories}
-            setGlass={setGlass}
-          />
+        {showWelcome ? (
+          <div className="flex flex-col items-center justify-start pt-24 min-h-[60vh] text-center px-4">
+            <div className="flex flex-col sm:flex-row gap-6">
+              <button
+                onClick={() => { setShowWelcome(false); setTourOpen(true); }}
+                className="px-8 py-3 rounded-lg border border-amber-600 text-amber-400 hover:bg-amber-900/20 transition-colors text-sm font-semibold"
+              >
+                Take the Tour
+              </button>
+              <button
+                onClick={() => { setShowWelcome(false); setSidebarOpen(true); }}
+                className="px-8 py-3 rounded-lg text-slate-900 font-semibold text-sm transition-colors"
+                style={{ backgroundColor: '#f59e0b' }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#d97706')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#f59e0b')}
+              >
+                Start Logging →
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'rifles'      && <RifleManager rifles={rifles} setRifles={setRifles} sessions={sessions} />}
+            {activeTab === 'glass'       && <GlassManager glass={glass} setGlass={setGlass} />}
+            {activeTab === 'accessories' && <Accessories accessories={accessories} setAccessories={setAccessories} />}
+            {activeTab === 'gear'        && <ReloadingGear gear={gear} setGear={setGear} />}
+            {activeTab === 'ammo'        && <AmmoInventory loads={loads} ammo={ammo} setAmmo={setAmmo} />}
+            {activeTab === 'torque'      && <TorqueLog rifles={rifles} />}
+            {activeTab === 'loads'       && <LoadDevelopment loads={loads} setLoads={setLoads} gear={gear} />}
+            {activeTab === 'dope'        && <Dope rifles={rifles} />}
+            {activeTab === 'range'       && <RangeSessionLogger sessions={sessions} setSessions={setSessions} rifles={rifles} loads={loads} ammo={ammo} setAmmo={setAmmo} />}
+            {activeTab === 'calendar'    && <MatchCalendar matches={matches} setMatches={setMatches} />}
+            {activeTab === 'analysis'    && <LoadAnalysis sessions={sessions} rifles={rifles} loads={loads} ammo={ammo} />}
+            {activeTab === 'cleaning'    && <CleaningLog rifles={rifles} />}
+            {activeTab === 'brass-labeler' && <BrassLabeler />}
+            {activeTab === 'settings'    && (
+              <Settings
+                settings={settings}
+                setSettings={setSettings}
+                setRifles={setRifles}
+                setLoads={setLoads}
+                setGear={setGear}
+                setSessions={setSessions}
+                setMatches={setMatches}
+                setAccessories={setAccessories}
+                setGlass={setGlass}
+              />
+            )}
+          </>
         )}
       </main>
 
